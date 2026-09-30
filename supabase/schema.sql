@@ -66,7 +66,7 @@ create table public.trips (
   end_level integer,
   km_driven integer,
   energy_consumed numeric,
-  energy_rate numeric  -- L/100km hoặc kWh/100km,
+  energy_rate numeric,   -- L/100km hoặc kWh/100km
   pre_notes text,
   post_notes text,
   has_damage boolean not null default false,
