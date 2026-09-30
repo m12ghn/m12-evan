@@ -23,7 +23,7 @@ export default function Login() {
       <form className="card" onSubmit={onSubmit}>
         <h1>🚚 FleetOps</h1>
         <p className="muted">Đăng nhập để tiếp tục</p>
-        {!isConfigured && <p className="error">Chưa cấu hình VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY</p>}
+        {!isConfigured && <p className="error">Chưa cấu hình SUPABASE_URL / SUPABASE_ANON_KEY</p>}
         <input placeholder="MSNV hoặc email" value={account} onChange={e => setAccount(e.target.value)} autoCapitalize="none" required />
         <input type="password" placeholder="Mật khẩu" value={password} onChange={e => setPassword(e.target.value)} required />
         {error && <p className="error">{error}</p>}

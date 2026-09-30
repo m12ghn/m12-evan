@@ -24,7 +24,7 @@ supabase/    schema.sql (bảng + RLS + storage), seed.sql
    cp .env.example .env   # điền URL + anon key
    npm install && npm run dev
    ```
-4. **Vercel**: Import repo này từ GitHub (Framework: Vite, Root Directory để trống), thêm 2 biến môi trường `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Mỗi lần push là tự deploy.
+4. **Vercel**: Import repo này từ GitHub (Framework: Vite, Root Directory để trống), thêm 2 biến môi trường `SUPABASE_URL`, `SUPABASE_ANON_KEY` (không cần tiền tố VITE_). Mỗi lần push là tự deploy.
 
 ## Việc tiếp theo
 - ✅ Tab tài xế đã làm: Chụp hình đầu ca, Cấp nhiên liệu / Cấp điện (một phiếu chung, xe dầu = lít, xe điện = kWh theo `vehicles.energy_type`), Chụp hình cuối ca.
