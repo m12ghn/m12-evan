@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/Shell.tsx","./src/lib/auth.tsx","./src/lib/supabase.ts","./src/lib/types.ts","./src/pages/DriverHome.tsx","./src/pages/Login.tsx","./src/pages/ManagerHome.tsx"],"version":"5.9.3"}

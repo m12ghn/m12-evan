@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Hệ Thống Kiểm Soát Vận Hành Xe & Nhiên Liệu | FleetOps</title>
+  <meta name="description" content="Kênh thu thập thông tin ODO, kiểm soát km và nhiên liệu, chụp ảnh đối chứng ngoại quan xe trước và sau ca vận hành cho đội xe 20+ phương tiện" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Top Global Navigation Bar -->
+  <header class="app-topbar">
+    <div class="topbar-container">
+      <div class="brand">
+        <div class="brand-icon">🚛</div>
+        <div class="brand-info">
+          <h1>FLEET<span class="text-accent">OPS</span></h1>
+          <p class="brand-sub">Kiểm Soát Vận Hành & Nhiên Liệu</p>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <!-- Switch between Driver mode and Fleet Manager mode -->
+        <div class="mode-switcher" id="modeSwitcher">
+          <button class="mode-btn active" id="btnModeDriver" onclick="switchMode('driver')">
+            <span class="btn-icon">📱</span> <span class="mode-text">Tài Xế</span>
+          </button>
+          <button class="mode-btn" id="btnModeAdmin" onclick="switchMode('admin')">
+            <span class="btn-icon">📊</span> <span class="mode-text">Quản Lý Xe</span>
+            <span class="badge-pending" id="badgePendingFuel" style="display:none">0</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- 1. DRIVER PORTAL (GIAO DIỆN TÀI XẾ) -->
+  <!-- ========================================== -->
+  <main id="portal-driver" class="portal-view active">
+    
+    <!-- DRIVER SELECT SCREEN (CHỌN TÀI XẾ) -->
+    <section id="driver-screen-login" class="driver-screen active">
+      <div class="mobile-card">
+        <div class="card-hero">
+          <div class="hero-badge">Ca Làm Việc Mới</div>
+          <h2>Bắt Đầu Ca Vận Hành</h2>
+          <p>Vui lòng chọn thông tin tài xế và nhận phương tiện để bắt đầu kiểm tra đầu ca</p>
+        </div>
+
+        <div class="form-group">
+          <label for="driverSelectInput">Họ Tên Tài Xế <span class="req">*</span></label>
+          <div class="input-with-icon">
+            <span class="input-icon">👤</span>
+            <select id="driverSelectInput" class="form-control" onchange="onDriverSelected()">
+              <option value="">-- Chọn tên tài xế của bạn --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Ongoing trip alert if driver already has an active trip -->
+        <div id="driverActiveTripAlert" class="active-trip-box" style="display:none;">
+          <div class="box-icon">⚡</div>
+          <div class="box-content">
+            <h4>Bạn đang có ca xe chưa kết thúc!</h4>
+            <p id="driverActiveTripDesc">Xe: 29H-123.45 | Bắt đầu lúc: 08:00</p>
+            <div class="box-actions">
+              <button class="btn btn-warning btn-sm" onclick="continueDriverActiveTrip()">Tiếp Tục Ca Này →</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="driverStartBlock">
+          <div class="form-group">
+            <label for="vehicleSelectInput">Chọn Phương Tiện Nhận Xe <span class="req">*</span></label>
+            <div class="input-with-icon">
+              <span class="input-icon">🚚</span>
+              <select id="vehicleSelectInput" class="form-control" onchange="onVehicleSelectedForTrip()">
+                <option value="">-- Chọn xe bàn giao (Biển số) --</option>
+              </select>
+            </div>
+            <div id="selectedVehicleInfo" class="vehicle-mini-preview" style="display:none;"></div>
+          </div>
+
+          <button id="btnProceedToCheckin" class="btn btn-primary btn-block btn-lg" onclick="startCheckinWizard()" disabled>
+            <span>Tiến Hành Nhận Xe & Chụp Ảnh</span> →
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Action: Tips for drivers -->
+      <div class="quick-status-grid">
+        <div class="status-card-hint">
+          <div class="hint-icon">📸</div>
+          <div class="hint-text">
+            <strong>Chụp ảnh 4 góc xe rõ nét</strong>
+            <span>Đầu xe, Đuôi xe, Sườn trái, Sườn phải & Taplo để bảo vệ quyền lợi tài xế khi trả xe</span>
+          </div>
+        </div>
+        <div class="status-card-hint">
+          <div class="hint-icon">⛽</div>
+          <div class="hint-text">
+            <strong>Đổ nhiên liệu trong ca?</strong>
+            <span>Nhập số lít, chụp ảnh cây xăng & hóa đơn để được duyệt hoàn tiền ngay lập tức</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DRIVER CHECK-IN WIZARD (LÚC NHẬN XE) -->
+    <section id="driver-screen-checkin" class="driver-screen">
+      <div class="mobile-card">
+        <div class="screen-header">
+          <button class="btn-back" onclick="backToDriverLogin()">← Quay lại</button>
+          <div class="header-titles">
+            <h3>Biên Bản Nhận Xe (Đầu Ca)</h3>
+            <span class="badge-tag" id="checkinVehiclePlateBadge">29H-123.45</span>
+          </div>
+        </div>
+
+        <div class="step-progress-bar">
+          <div class="step-item active" id="ciStep1">1. ODO & Xăng</div>
+          <div class="step-item" id="ciStep2">2. Ảnh 4 Hướng</div>
+          <div class="step-item" id="ciStep3">3. Xác Nhận</div>
+        </div>
+
+        <!-- SUBSTEP 1: ODO & Nhiên liệu đầu ca -->
+        <div id="ci-substep-1" class="wizard-substep active">
+          <div class="section-notice info">
+            <span class="notice-icon">ℹ️</span>
+            <div>
+              <strong>Kiểm tra ODO & Bình nhiên liệu</strong>
+              <p>Ghi nhận chỉ số thực tế trên đồng hồ taplo trước khi rời bãi.</p>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="checkinOdo">Số ODO Ban Đầu (km) <span class="req">*</span></label>
+              <input type="number" id="checkinOdo" class="form-control font-mono" placeholder="Vd: 45200" min="0" step="1" oninput="validateCheckinSubstep1()" />
+              <small class="field-hint" id="prevOdoHint">ODO chốt ca trước: <b id="hintPrevOdoVal">--</b> km</small>
+            </div>
+
+            <div class="form-group">
+              <label for="checkinFuel">Mức Nhiên Liệu Đầu Ca (%) <span class="req">*</span></label>
+              <div class="fuel-input-group">
+                <input type="range" id="checkinFuel" min="5" max="100" step="5" value="50" oninput="updateFuelRangeText('checkinFuel', 'checkinFuelVal'); validateCheckinSubstep1();" />
+                <span class="fuel-val-pill" id="checkinFuelVal">50%</span>
+              </div>
+              <small class="field-hint">Ước tính: ~<span id="checkinFuelLitersEst">35</span> Lít</small>
+            </div>
+          </div>
+
+          <!-- Photo of Dashboard / Odometer -->
+          <div class="form-group">
+            <label>Ảnh Chụp Taplo (Đồng Hồ ODO & Báo Xăng) <span class="req">*</span></label>
+            <div class="photo-upload-box" id="boxPhotoTaploStart" onclick="triggerFileInput('inputPhotoTaploStart')">
+              <input type="file" id="inputPhotoTaploStart" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoTaploStart', 'boxPhotoTaploStart', validateCheckinSubstep1)" />
+              <div class="upload-placeholder" id="placeholderTaploStart">
+                <span class="cam-icon">📷</span>
+                <strong>Chụp Ảnh Taplo ODO & Nhiên Liệu</strong>
+                <p>Nhấn để mở Camera hoặc chọn ảnh từ thư viện</p>
+              </div>
+              <img id="previewPhotoTaploStart" class="uploaded-img-preview" style="display:none;" alt="Taplo ban đầu" />
+            </div>
+          </div>
+
+          <button id="btnCiToStep2" class="btn btn-primary btn-block btn-lg" onclick="goToCiSubstep(2)" disabled>
+            Tiếp Tục: Chụp Ảnh Ngoại Quan 4 Hướng →
+          </button>
+        </div>
+
+        <!-- SUBSTEP 2: 4 photos around vehicle -->
+        <div id="ci-substep-2" class="wizard-substep">
+          <div class="section-notice alert">
+            <span class="notice-icon">🛡️</span>
+            <div>
+              <strong>Xác thực xe không bị trầy xước / hư hao</strong>
+              <p>Chụp đủ 4 góc: Đầu xe, Đuôi xe, Sườn trái, Sườn phải. Hình ảnh này là bằng chứng đối chiếu khi bạn bàn giao trả xe cuối ngày.</p>
+            </div>
+          </div>
+
+          <div class="photo-4grid">
+            <!-- 1. Đầu xe -->
+            <div class="photo-slot" onclick="triggerFileInput('inputPhotoFrontStart')">
+              <input type="file" id="inputPhotoFrontStart" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoFrontStart', 'slotPhotoFrontStart', validateCheckinSubstep2)" />
+              <div class="slot-container" id="slotPhotoFrontStart">
+                <span class="slot-tag">1. Đầu Xe</span>
+                <span class="cam-mini-icon">📸</span>
+                <span class="slot-caption">Mặt trước, cản trước & đèn</span>
+                <img id="previewPhotoFrontStart" class="slot-preview" style="display:none;" alt="Đầu xe" />
+              </div>
+            </div>
+
+            <!-- 2. Đuôi xe -->
+            <div class="photo-slot" onclick="triggerFileInput('inputPhotoBackStart')">
+              <input type="file" id="inputPhotoBackStart" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoBackStart', 'slotPhotoBackStart', validateCheckinSubstep2)" />
+              <div class="slot-container" id="slotPhotoBackStart">
+                <span class="slot-tag">2. Đuôi Xe</span>
+                <span class="cam-mini-icon">📸</span>
+                <span class="slot-caption">Cản sau, thùng hàng & đèn</span>
+                <img id="previewPhotoBackStart" class="slot-preview" style="display:none;" alt="Đuôi xe" />
+              </div>
+            </div>
+
+            <!-- 3. Sườn Trái -->
+            <div class="photo-slot" onclick="triggerFileInput('inputPhotoLeftStart')">
+              <input type="file" id="inputPhotoLeftStart" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoLeftStart', 'slotPhotoLeftStart', validateCheckinSubstep2)" />
+              <div class="slot-container" id="slotPhotoLeftStart">
+                <span class="slot-tag">3. Sườn Trái</span>
+                <span class="cam-mini-icon">📸</span>
+                <span class="slot-caption">Cửa tài & lốp hông trái</span>
+                <img id="previewPhotoLeftStart" class="slot-preview" style="display:none;" alt="Sườn trái" />
+              </div>
+            </div>
+
+            <!-- 4. Sườn Phải -->
+            <div class="photo-slot" onclick="triggerFileInput('inputPhotoRightStart')">
+              <input type="file" id="inputPhotoRightStart" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoRightStart', 'slotPhotoRightStart', validateCheckinSubstep2)" />
+              <div class="slot-container" id="slotPhotoRightStart">
+                <span class="slot-tag">4. Sườn Phải</span>
+                <span class="cam-mini-icon">📸</span>
+                <span class="slot-caption">Cửa phụ & lốp hông phải</span>
+                <img id="previewPhotoRightStart" class="slot-preview" style="display:none;" alt="Sườn phải" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="checkinPreExistingDamage">Ghi Chú Vết Trầy Xước / Hư Hỏng Có Sẵn Trước Khi Nhận (nếu có):</label>
+            <textarea id="checkinPreExistingDamage" class="form-control" rows="2" placeholder="Ví dụ: Cản trước bên phụ có vết xước 10cm có sẵn, lốp sau trái hơi non..."></textarea>
+          </div>
+
+          <div class="wizard-actions">
+            <button class="btn btn-secondary" onclick="goToCiSubstep(1)">← Quay Lại</button>
+            <button id="btnCiToStep3" class="btn btn-primary" onclick="goToCiSubstep(3)" disabled>Xác Nhận Nhận Xe →</button>
+          </div>
+        </div>
+
+        <!-- SUBSTEP 3: Confirmation Summary -->
+        <div id="ci-substep-3" class="wizard-substep">
+          <div class="summary-card">
+            <h4>Tóm Tắt Bàn Giao Đầu Ca</h4>
+            <div class="summary-row">
+              <span>Tài xế:</span>
+              <strong id="ciSumDriverName">--</strong>
+            </div>
+            <div class="summary-row">
+              <span>Biển số xe:</span>
+              <strong id="ciSumPlate">--</strong>
+            </div>
+            <div class="summary-row">
+              <span>Chỉ số ODO bắt đầu:</span>
+              <strong class="text-accent font-mono" id="ciSumOdo">-- km</strong>
+            </div>
+            <div class="summary-row">
+              <span>Mức nhiên liệu:</span>
+              <strong class="text-accent" id="ciSumFuel">-- %</strong>
+            </div>
+            <div class="summary-row">
+              <span>Hình ảnh đối chứng:</span>
+              <span class="badge-success">Đã đủ 5 ảnh (Taplo + 4 góc)</span>
+            </div>
+            <div class="summary-row" id="ciSumNoteRow" style="display:none;">
+              <span>Ghi chú vết xước:</span>
+              <em id="ciSumNote">--</em>
+            </div>
+          </div>
+
+          <div class="agreement-box">
+            <label class="checkbox-container">
+              <input type="checkbox" id="ciAgreeCheckbox" onchange="toggleBtnSubmitCheckin()" />
+              <span class="checkmark"></span>
+              <span class="label-text">Tôi xác nhận các thông số ODO, lượng nhiên liệu và hình ảnh chụp ngoại quan xe là chính xác, xe đã được kiểm tra an toàn trước khi vận hành.</span>
+            </label>
+          </div>
+
+          <div class="wizard-actions">
+            <button class="btn btn-secondary" onclick="goToCiSubstep(2)">← Chỉnh Sửa</button>
+            <button id="btnSubmitCheckin" class="btn btn-success btn-lg" onclick="submitCheckinTrip()" disabled>
+              ✓ Xác Nhận Bắt Đầu Ca Chạy
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DRIVER ACTIVE TRIP DASHBOARD (TRONG CA VẬN HÀNH) -->
+    <section id="driver-screen-active-trip" class="driver-screen">
+      <div class="mobile-card">
+        <div class="active-trip-header">
+          <div class="pulse-indicator"></div>
+          <div>
+            <div class="trip-status-label">CA XE ĐANG VẬN HÀNH</div>
+            <h2 id="activeTripPlate">29H-123.45</h2>
+            <p id="activeTripVehicleDesc" class="text-muted">Tải 2.5 Tấn • Hyundai Mighty</p>
+          </div>
+        </div>
+
+        <div class="metrics-strip">
+          <div class="metric-box">
+            <span class="m-label">ODO Xuất Phát</span>
+            <span class="m-val font-mono" id="activeTripStartOdo">45,200 km</span>
+          </div>
+          <div class="metric-box">
+            <span class="m-label">Nhiên Liệu Đầu Ca</span>
+            <span class="m-val" id="activeTripStartFuel">80%</span>
+          </div>
+          <div class="metric-box">
+            <span class="m-label">Giờ Nhận Xe</span>
+            <span class="m-val" id="activeTripStartTime">07:30</span>
+          </div>
+        </div>
+
+        <!-- MID-SHIFT ACTIONS -->
+        <div class="action-card-primary">
+          <div class="act-header">
+            <span class="act-icon">⛽</span>
+            <div class="act-info">
+              <h4>Xin Cấp & Đổ Nhiên Liệu Trong Ca</h4>
+              <p>Gửi phiếu yêu cầu đổ dầu/xăng kèm ảnh cây xăng & hóa đơn</p>
+            </div>
+          </div>
+          <button class="btn btn-accent btn-block" onclick="openFuelRefillModal()">
+            + Tạo Phiếu Đổ Nhiên Liệu Mới
+          </button>
+        </div>
+
+        <!-- REFUELING HISTORY IN THIS SHIFT -->
+        <div class="refuel-history-section">
+          <div class="sub-header">
+            <h4>Lịch Sử Tiếp Nhiên Liệu Trong Ca</h4>
+            <span class="badge-count" id="activeTripFuelCount">0 lần</span>
+          </div>
+          <div id="activeTripFuelList" class="fuel-mini-list">
+            <div class="empty-mini">Chưa có lần đổ nhiên liệu nào trong ca này</div>
+          </div>
+        </div>
+
+        <!-- END SHIFT BUTTON -->
+        <div class="return-action-block">
+          <button class="btn btn-danger btn-block btn-lg" onclick="startCheckoutWizard()">
+            🏁 Về Trả Xe & Chốt Ca Vận Hành
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- DRIVER CHECK-OUT WIZARD (LÚC TRẢ XE - CUỐI CA) -->
+    <section id="driver-screen-checkout" class="driver-screen">
+      <div class="mobile-card">
+        <div class="screen-header">
+          <button class="btn-back" onclick="backToActiveTripDashboard()">← Quay lại ca</button>
+          <div class="header-titles">
+            <h3>Bàn Giao & Trả Xe (Cuối Ca)</h3>
+            <span class="badge-tag" id="coVehiclePlateBadge">29H-123.45</span>
+          </div>
+        </div>
+
+        <div class="step-progress-bar">
+          <div class="step-item active" id="coStep1">1. ODO & Xăng Cuối</div>
+          <div class="step-item" id="coStep2">2. Ảnh Đối Chứng</div>
+          <div class="step-item" id="coStep3">3. Hoàn Thành</div>
+        </div>
+
+        <!-- CO SUBSTEP 1: ODO & Nhiên liệu cuối ca -->
+        <div id="co-substep-1" class="wizard-substep active">
+          <div class="section-notice alert">
+            <span class="notice-icon">📏</span>
+            <div>
+              <strong>Nhập chỉ số ODO & Nhiên liệu thực tế khi về bãi</strong>
+              <p>Chỉ số ODO kết thúc phải lớn hơn hoặc bằng ODO ban đầu (<span id="coMinOdoVal">45,200</span> km).</p>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="checkoutOdo">Số ODO Kết Thúc (km) <span class="req">*</span></label>
+              <input type="number" id="checkoutOdo" class="form-control font-mono" placeholder="Vd: 45380" min="0" step="1" oninput="calculateTripCheckoutStats(); validateCheckoutSubstep1();" />
+              <div id="coOdoError" class="field-error" style="display:none;">ODO kết thúc không thể nhỏ hơn ODO lúc nhận!</div>
+            </div>
+
+            <div class="form-group">
+              <label for="checkoutFuel">Mức Nhiên Liệu Còn Lại (%) <span class="req">*</span></label>
+              <div class="fuel-input-group">
+                <input type="range" id="checkoutFuel" min="0" max="100" step="5" value="40" oninput="updateFuelRangeText('checkoutFuel', 'checkoutFuelVal'); calculateTripCheckoutStats(); validateCheckoutSubstep1();" />
+                <span class="fuel-val-pill" id="checkoutFuelVal">40%</span>
+              </div>
+              <small class="field-hint">Ước tính còn lại: ~<span id="checkoutFuelLitersEst">28</span> Lít</small>
+            </div>
+          </div>
+
+          <!-- Dynamic calculation preview -->
+          <div class="stat-calc-box">
+            <div class="stat-calc-item">
+              <span class="calc-label">Quãng đường đã chạy</span>
+              <span class="calc-value font-mono" id="calcKmDriven">0 km</span>
+            </div>
+            <div class="stat-calc-item">
+              <span class="calc-label">Nhiên liệu tiêu thụ ước tính</span>
+              <span class="calc-value font-mono" id="calcFuelConsumed">0 Lít</span>
+            </div>
+            <div class="stat-calc-item">
+              <span class="calc-label">Mức tiêu hao trung bình</span>
+              <span class="calc-value font-mono" id="calcFuelRate">-- L/100km</span>
+            </div>
+          </div>
+
+          <!-- Photo of Dashboard / End ODO -->
+          <div class="form-group">
+            <label>Ảnh Chụp Taplo Kết Thúc (ODO & Xăng Về Bãi) <span class="req">*</span></label>
+            <div class="photo-upload-box" id="boxPhotoTaploEnd" onclick="triggerFileInput('inputPhotoTaploEnd')">
+              <input type="file" id="inputPhotoTaploEnd" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoTaploEnd', 'boxPhotoTaploEnd', validateCheckoutSubstep1)" />
+              <div class="upload-placeholder" id="placeholderTaploEnd">
+                <span class="cam-icon">📷</span>
+                <strong>Chụp Ảnh Taplo Trả Xe</strong>
+                <p>Nhấn để chụp đồng hồ ODO và kim nhiên liệu cuối ca</p>
+              </div>
+              <img id="previewPhotoTaploEnd" class="uploaded-img-preview" style="display:none;" alt="Taplo kết thúc" />
+            </div>
+          </div>
+
+          <button id="btnCoToStep2" class="btn btn-primary btn-block btn-lg" onclick="goToCoSubstep(2)" disabled>
+            Tiếp Tục: Chụp Ảnh Ngoại Quan Sau Vận Hành →
+          </button>
+        </div>
+
+        <!-- CO SUBSTEP 2: 4 photos around vehicle to verify no damage -->
+        <div id="co-substep-2" class="wizard-substep">
+          <div class="section-notice alert">
+            <span class="notice-icon">🔍</span>
+            <div>
+              <strong>Xác thực xe KHÔNG BỊ HƯ HAO sau vận hành</strong>
+              <p>Chụp đủ 4 góc xe lúc về trả. Hệ thống sẽ lưu giữ để đối chiếu trực tiếp với ảnh chụp lúc nhận xe ban sáng.</p>
+            </div>
+          </div>
+
+          <div class="photo-4grid">
+            <!-- 1. Đầu xe sau ca -->
+            <div class="photo-slot" onclick="triggerFileInput('inputPhotoFrontEnd')">
+              <input type="file" id="inputPhotoFrontEnd" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoFrontEnd', 'slotPhotoFrontEnd', validateCheckoutSubstep2)" />
+              <div class="slot-container" id="slotPhotoFrontEnd">
+                <span class="slot-tag">1. Đầu Xe (Sau Ca)</span>
+                <span class="cam-mini-icon">📸</span>
+                <span class="slot-caption">Kiểm tra cản & đèn trước</span>
+                <img id="previewPhotoFrontEnd" class="slot-preview" style="display:none;" alt="Đầu xe trả" />
+              </div>
+            </div>
+
+            <!-- 2. Đuôi xe sau ca -->
+            <div class="photo-slot" onclick="triggerFileInput('inputPhotoBackEnd')">
+              <input type="file" id="inputPhotoBackEnd" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoBackEnd', 'slotPhotoBackEnd', validateCheckoutSubstep2)" />
+              <div class="slot-container" id="slotPhotoBackEnd">
+                <span class="slot-tag">2. Đuôi Xe (Sau Ca)</span>
+                <span class="cam-mini-icon">📸</span>
+                <span class="slot-caption">Kiểm tra thùng & đèn sau</span>
+                <img id="previewPhotoBackEnd" class="slot-preview" style="display:none;" alt="Đuôi xe trả" />
+              </div>
+            </div>
+
+            <!-- 3. Sườn Trái sau ca -->
+            <div class="photo-slot" onclick="triggerFileInput('inputPhotoLeftEnd')">
+              <input type="file" id="inputPhotoLeftEnd" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoLeftEnd', 'slotPhotoLeftEnd', validateCheckoutSubstep2)" />
+              <div class="slot-container" id="slotPhotoLeftEnd">
+                <span class="slot-tag">3. Sườn Trái (Sau Ca)</span>
+                <span class="cam-mini-icon">📸</span>
+                <span class="slot-caption">Kiểm tra sườn & lốp trái</span>
+                <img id="previewPhotoLeftEnd" class="slot-preview" style="display:none;" alt="Sườn trái trả" />
+              </div>
+            </div>
+
+            <!-- 4. Sườn Phải sau ca -->
+            <div class="photo-slot" onclick="triggerFileInput('inputPhotoRightEnd')">
+              <input type="file" id="inputPhotoRightEnd" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoRightEnd', 'slotPhotoRightEnd', validateCheckoutSubstep2)" />
+              <div class="slot-container" id="slotPhotoRightEnd">
+                <span class="slot-tag">4. Sườn Phải (Sau Ca)</span>
+                <span class="cam-mini-icon">📸</span>
+                <span class="slot-caption">Kiểm tra sườn & lốp phải</span>
+                <img id="previewPhotoRightEnd" class="slot-preview" style="display:none;" alt="Sườn phải trả" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Damage declaration radio -->
+          <div class="damage-declaration-box">
+            <label class="radio-title">Tình trạng ngoại quan xe sau ca:</label>
+            <div class="radio-options">
+              <label class="radio-option">
+                <input type="radio" name="vehicleConditionAfter" value="good" checked onchange="toggleDamageDetailsBox()" />
+                <span>✅ Xe nguyên vẹn, không va quẹt / hư hao phát sinh</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="vehicleConditionAfter" value="damaged" onchange="toggleDamageDetailsBox()" />
+                <span>⚠️ Có phát sinh vết xước / va quẹt hoặc sự cố kỹ thuật</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="damageDetailsBox" class="form-group" style="display:none;">
+            <label for="checkoutDamageNote" class="text-danger">Mô Tả Chi Tiết Vết Hư Hỏng / Sự Cố Máy Móc: <span class="req">*</span></label>
+            <textarea id="checkoutDamageNote" class="form-control" rows="3" placeholder="Ghi rõ vị trí trầy xước, thời điểm xảy ra sự cố, nguyên nhân..."></textarea>
+          </div>
+
+          <div class="wizard-actions">
+            <button class="btn btn-secondary" onclick="goToCoSubstep(1)">← Quay Lại</button>
+            <button id="btnCoToStep3" class="btn btn-primary" onclick="goToCoSubstep(3)" disabled>Xem Tổng Kết Ca →</button>
+          </div>
+        </div>
+
+        <!-- CO SUBSTEP 3: Complete & Submit -->
+        <div id="co-substep-3" class="wizard-substep">
+          <div class="summary-card">
+            <h4>Báo Cáo Tổng Hợp Hoàn Thành Ca</h4>
+            
+            <div class="summary-grid-2">
+              <div class="sum-col">
+                <span class="col-title">LÚC NHẬN XE</span>
+                <div class="sum-item">ODO: <b id="coSumStartOdo">-- km</b></div>
+                <div class="sum-item">Nhiên liệu: <b id="coSumStartFuel">-- %</b></div>
+              </div>
+              <div class="sum-col">
+                <span class="col-title">LÚC TRẢ XE</span>
+                <div class="sum-item">ODO: <b id="coSumEndOdo">-- km</b></div>
+                <div class="sum-item">Nhiên liệu: <b id="coSumEndFuel">-- %</b></div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="metric-highlight-row">
+              <div class="metric-h-card">
+                <span class="m-h-label">Quãng Đường Chạy</span>
+                <span class="m-h-val font-mono text-accent" id="coSumTotalKm">-- km</span>
+              </div>
+              <div class="metric-h-card">
+                <span class="m-h-label">Đổ Thêm Trong Ca</span>
+                <span class="m-h-val font-mono" id="coSumRefueledLiters">0 L</span>
+              </div>
+              <div class="metric-h-card">
+                <span class="m-h-label">Tiêu Hao Trung Bình</span>
+                <span class="m-h-val font-mono text-success" id="coSumFuelRate">-- L/100km</span>
+              </div>
+            </div>
+
+            <div class="summary-row">
+              <span>Đánh giá ngoại quan:</span>
+              <strong id="coSumConditionBadge">✅ Xe nguyên vẹn</strong>
+            </div>
+            <div class="summary-row" id="coSumDamageDetailRow" style="display:none;">
+              <span>Ghi chú sự cố:</span>
+              <span class="text-danger" id="coSumDamageDetailText">--</span>
+            </div>
+          </div>
+
+          <div class="wizard-actions">
+            <button class="btn btn-secondary" onclick="goToCoSubstep(2)">← Chỉnh Sửa</button>
+            <button id="btnSubmitCheckout" class="btn btn-success btn-lg" onclick="submitCheckoutTrip()">
+              ✓ Hoàn Tất & Nộp Báo Cáo Ca
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- ========================================== -->
+  <!-- 2. FLEET MANAGER PORTAL (QUẢN LÝ XE >20 PHƯƠNG TIỆN) -->
+  <!-- ========================================== -->
+  <main id="portal-admin" class="portal-view">
+    
+    <!-- MANAGER TOP OVERVIEW BAR -->
+    <div class="admin-kpi-bar">
+      <div class="kpi-card">
+        <div class="kpi-icon">🚛</div>
+        <div class="kpi-data">
+          <span class="kpi-num" id="kpiTotalVehicles">22</span>
+          <span class="kpi-title">Tổng Đội Xe</span>
+        </div>
+      </div>
+      <div class="kpi-card highlight-green">
+        <div class="kpi-icon">🟢</div>
+        <div class="kpi-data">
+          <span class="kpi-num" id="kpiOnDutyVehicles">4</span>
+          <span class="kpi-title">Đang Vận Hành</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">🅿️</div>
+        <div class="kpi-data">
+          <span class="kpi-num" id="kpiAvailableVehicles">16</span>
+          <span class="kpi-title">Sẵn Sàng Tại Bãi</span>
+        </div>
+      </div>
+      <div class="kpi-card highlight-amber">
+        <div class="kpi-icon">⛽</div>
+        <div class="kpi-data">
+          <span class="kpi-num" id="kpiPendingFuelApprovals">2</span>
+          <span class="kpi-title">Phiếu Chờ Duyệt Dầu</span>
+        </div>
+      </div>
+      <div class="kpi-card highlight-blue">
+        <div class="kpi-icon">🛣️</div>
+        <div class="kpi-data">
+          <span class="kpi-num font-mono" id="kpiTotalKmToday">1,840</span>
+          <span class="kpi-title">Tổng Km Hôm Nay</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN TABS NAVIGATION -->
+    <div class="admin-tab-nav">
+      <button class="admin-tab-btn active" id="tabBtnFleet" onclick="switchAdminTab('fleet')">
+        <span>🚚</span> Danh Sách Đội Xe (20+)
+      </button>
+      <button class="admin-tab-btn" id="tabBtnTrips" onclick="switchAdminTab('trips')">
+        <span>📋</span> Nhật Ký Ca Chạy & Soi Ảnh
+      </button>
+      <button class="admin-tab-btn" id="tabBtnFuel" onclick="switchAdminTab('fuel')">
+        <span>⛽</span> Quản Lý Cấp Nhiên Liệu
+        <span class="tab-badge" id="tabFuelBadge">2</span>
+      </button>
+      <button class="admin-tab-btn" id="tabBtnSettings" onclick="switchAdminTab('settings')">
+        <span>⚙️</span> Cấu Hình Xe & Tài Xế
+      </button>
+    </div>
+
+    <!-- TAB 1: FLEET STATUS BOARD (>20 VEHICLES) -->
+    <section id="admin-tab-fleet" class="admin-tab-content active">
+      <div class="tab-toolbar">
+        <div class="search-filters">
+          <div class="search-input-wrap">
+            <span class="s-icon">🔍</span>
+            <input type="text" id="fleetSearchInput" placeholder="Tìm biển số xe, loại xe, tên tài xế..." oninput="renderFleetGrid()" />
+          </div>
+          <div class="filter-pills">
+            <button class="filter-pill active" data-filter="all" onclick="setFleetFilter('all', this)">Tất cả (<span id="countFilterAll">22</span>)</button>
+            <button class="filter-pill" data-filter="on_duty" onclick="setFleetFilter('on_duty', this)">Đang chạy (<span id="countFilterOnDuty">4</span>)</button>
+            <button class="filter-pill" data-filter="ready" onclick="setFleetFilter('ready', this)">Tại bãi (<span id="countFilterReady">16</span>)</button>
+            <button class="filter-pill" data-filter="maintenance" onclick="setFleetFilter('maintenance', this)">Bảo dưỡng (<span id="countFilterMaint">2</span>)</button>
+          </div>
+        </div>
+
+        <div class="toolbar-right">
+          <button class="btn btn-outline btn-sm" onclick="exportTripsToExcel()">
+            📥 Xuất Excel Báo Cáo
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openAddVehicleModal()">
+            + Thêm Phương Tiện Mới
+          </button>
+        </div>
+      </div>
+
+      <!-- Vehicle Card Grid -->
+      <div id="fleetCardsContainer" class="fleet-cards-grid">
+        <!-- Rendered dynamically by JS -->
+      </div>
+    </section>
+
+    <!-- TAB 2: TRIPS LOG & PHOTO INSPECTION -->
+    <section id="admin-tab-trips" class="admin-tab-content">
+      <div class="tab-toolbar">
+        <div class="search-filters">
+          <div class="search-input-wrap">
+            <span class="s-icon">🔍</span>
+            <input type="text" id="tripSearchInput" placeholder="Lọc biển số, tài xế, ngày..." oninput="renderTripsTable()" />
+          </div>
+          <select id="tripStatusFilter" class="form-control-sm" onchange="renderTripsTable()">
+            <option value="all">Tất cả trạng thái</option>
+            <option value="active">Đang chạy</option>
+            <option value="completed">Đã trả xe hoàn tất</option>
+            <option value="issue">Có sự cố / hư hao</option>
+          </select>
+        </div>
+
+        <div class="toolbar-right">
+          <button class="btn btn-outline btn-sm" onclick="exportTripsToExcel()">
+            📥 Tải Bảng Kê (CSV/Excel)
+          </button>
+        </div>
+      </div>
+
+      <!-- Trips Table -->
+      <div class="table-responsive">
+        <table class="data-table" id="tripsTable">
+          <thead>
+            <tr>
+              <th>Biển Số Xe</th>
+              <th>Tài Xế</th>
+              <th>Thời Gian</th>
+              <th>ODO (Nhận → Trả)</th>
+              <th>Quãng Đường</th>
+              <th>Nhiên Liệu Đầu / Cuối / Đổ</th>
+              <th>Tiêu Hao (L/100km)</th>
+              <th>Tình Trạng Ngoại Quan</th>
+              <th class="text-right">Đối Soát Ảnh</th>
+            </tr>
+          </thead>
+          <tbody id="tripsTableBody">
+            <!-- Rendered dynamically by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 3: FUEL MANAGEMENT & APPROVALS -->
+    <section id="admin-tab-fuel" class="admin-tab-content">
+      <div class="tab-toolbar">
+        <div class="search-filters">
+          <div class="search-input-wrap">
+            <span class="s-icon">🔍</span>
+            <input type="text" id="fuelSearchInput" placeholder="Tìm biển số, tài xế, mã phiếu..." oninput="renderFuelTable()" />
+          </div>
+          <select id="fuelStatusFilter" class="form-control-sm" onchange="renderFuelTable()">
+            <option value="all">Tất cả phiếu</option>
+            <option value="pending" selected>Chờ duyệt cấp nhiên liệu</option>
+            <option value="approved">Đã phê duyệt</option>
+            <option value="rejected">Từ chối</option>
+          </select>
+        </div>
+
+        <div class="fuel-kpi-inline">
+          <span>Tổng tiền đã duyệt: <strong class="text-success font-mono" id="fuelTotalMoneyApproved">0 đ</strong></span>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="fuelTable">
+          <thead>
+            <tr>
+              <th>Mã Phiếu</th>
+              <th>Thời Gian</th>
+              <th>Biển Số Xe</th>
+              <th>Tài Xế</th>
+              <th>Loại Nhiên Liệu</th>
+              <th>Số Lượng & Tiền</th>
+              <th>ODO Lúc Đổ</th>
+              <th>Ảnh Chứng Từ</th>
+              <th>Trạng Thái</th>
+              <th class="text-right">Thao Tác Duyệt</th>
+            </tr>
+          </thead>
+          <tbody id="fuelTableBody">
+            <!-- Rendered dynamically by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 4: SETTINGS & VEHICLES / DRIVERS CRUD -->
+    <section id="admin-tab-settings" class="admin-tab-content">
+      <div class="settings-grid">
+        <div class="settings-card">
+          <div class="card-header-actions">
+            <div>
+              <h3>Danh Mục Phương Tiện (>20 Xe)</h3>
+              <p>Quản lý định mức tiêu hao tiêu chuẩn, dung tích bình nhiên liệu và ODO gốc</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openAddVehicleModal()">+ Thêm Xe</button>
+          </div>
+          <div class="table-responsive max-h-400">
+            <table class="data-table compact-table">
+              <thead>
+                <tr>
+                  <th>Biển Số</th>
+                  <th>Chủng Loại</th>
+                  <th>Bình (L)</th>
+                  <th>Định Mức Chuẩn</th>
+                  <th>ODO Hiện Tại</th>
+                  <th>Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody id="settingsVehiclesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header-actions">
+            <div>
+              <h3>Danh Sách Tài Xế Đội Xe</h3>
+              <p>Danh sách lái xe có quyền nhận phương tiện và nộp báo cáo ca</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openAddDriverModal()">+ Thêm Tài Xế</button>
+          </div>
+          <div class="table-responsive max-h-400">
+            <table class="data-table compact-table">
+              <thead>
+                <tr>
+                  <th>Mã TX</th>
+                  <th>Họ Tên</th>
+                  <th>SĐT</th>
+                  <th>Hạng Bằng</th>
+                  <th>Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody id="settingsDriversTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- ========================================== -->
+  <!-- MODALS & OVERLAYS -->
+  <!-- ========================================== -->
+
+  <!-- MODAL: ĐỔ NHIÊN LIỆU TRONG CA (DÀNH CHO TÀI XẾ) -->
+  <div id="modalRefuel" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3>Phiếu Xin Cấp & Đổ Nhiên Liệu</h3>
+          <p id="refuelModalSubtitle" class="text-muted">Xe: 29H-123.45 | Tài xế: Nguyễn Văn A</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalRefuel')">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="refuelFuelType">Loại Nhiên Liệu <span class="req">*</span></label>
+            <select id="refuelFuelType" class="form-control">
+              <option value="Dầu Diesel (DO 0.05S)">Dầu Diesel (DO 0.05S)</option>
+              <option value="Dầu Diesel (DO 0.001S)">Dầu Diesel cao cấp (DO 0.001S)</option>
+              <option value="Xăng RON 95-V">Xăng RON 95-V</option>
+              <option value="Xăng RON 95-III">Xăng RON 95-III</option>
+              <option value="Xăng E5 RON 92">Xăng E5 RON 92</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="refuelCurrentOdo">ODO Lúc Đổ (km) <span class="req">*</span></label>
+            <input type="number" id="refuelCurrentOdo" class="form-control font-mono" placeholder="Vd: 45280" />
+          </div>
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label for="refuelLiters">Số Lít Đổ <span class="req">*</span></label>
+            <input type="number" id="refuelLiters" class="form-control font-mono" placeholder="Vd: 45.5" step="0.1" oninput="calculateRefuelTotal()" />
+          </div>
+
+          <div class="form-group">
+            <label for="refuelUnitPrice">Đơn Giá (VNĐ/Lít)</label>
+            <input type="number" id="refuelUnitPrice" class="form-control font-mono" placeholder="Vd: 21500" step="100" oninput="calculateRefuelTotal()" />
+          </div>
+
+          <div class="form-group">
+            <label for="refuelTotalAmount">Tổng Tiền (VNĐ) <span class="req">*</span></label>
+            <input type="text" id="refuelTotalAmount" class="form-control font-mono font-bold text-accent" placeholder="0 đ" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="refuelGasStationName">Tên / Địa Chỉ Cây Xăng:</label>
+          <input type="text" id="refuelGasStationName" class="form-control" placeholder="Vd: Petrolimex Cửa Hàng Số 12, QL1A..." />
+        </div>
+
+        <!-- 2 Photos: Pump meter and Receipt -->
+        <div class="photo-2grid">
+          <div class="photo-slot" onclick="triggerFileInput('inputPhotoPump')">
+            <input type="file" id="inputPhotoPump" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoPump', 'slotPhotoPump')" />
+            <div class="slot-container" id="slotPhotoPump">
+              <span class="slot-tag">Ảnh Cột Bơm / Đồng Hồ Bơm</span>
+              <span class="cam-mini-icon">📸</span>
+              <span class="slot-caption">Chụp rõ số lít & số tiền</span>
+              <img id="previewPhotoPump" class="slot-preview" style="display:none;" alt="Cột bơm" />
+            </div>
+          </div>
+
+          <div class="photo-slot" onclick="triggerFileInput('inputPhotoReceipt')">
+            <input type="file" id="inputPhotoReceipt" accept="image/*" capture="environment" style="display:none" onchange="handleSinglePhotoUpload(this, 'previewPhotoReceipt', 'slotPhotoReceipt')" />
+            <div class="slot-container" id="slotPhotoReceipt">
+              <span class="slot-tag">Ảnh Hóa Đơn / Phiếu Đổ Xăng</span>
+              <span class="cam-mini-icon">🧾</span>
+              <span class="slot-caption">Chụp rõ hóa đơn VAT/phiếu</span>
+              <img id="previewPhotoReceipt" class="slot-preview" style="display:none;" alt="Hóa đơn xăng" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group mt-2">
+          <label for="refuelNote">Ghi Chú Thêm:</label>
+          <input type="text" id="refuelNote" class="form-control" placeholder="Vd: Đổ bù tuyến liên tỉnh..." />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalRefuel')">Hủy Bỏ</button>
+        <button class="btn btn-success" onclick="submitRefuelRequest()">Gửi Phiếu Cấp Nhiên Liệu</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL: SO SÁNH ĐỐI SOÁT ẢNH TRƯỚC / SAU (SIDE-BY-SIDE INSPECTOR) -->
+  <div id="modalComparePhotos" class="modal-overlay">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <div>
+          <h3>🔍 Đối Soát Ngoại Quan & Hư Hao Xe (Trước vs Sau Ca)</h3>
+          <p id="compareModalTripInfo" class="text-muted">Xe: 29H-123.45 | Tài xế: Nguyễn Văn A | Ngày: 23/09/2026</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalComparePhotos')">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- View selector pills -->
+        <div class="compare-nav-pills">
+          <button class="c-pill active" id="pillFront" onclick="switchCompareAngle('front')">1. Đầu Xe</button>
+          <button class="c-pill" id="pillBack" onclick="switchCompareAngle('back')">2. Đuôi Xe</button>
+          <button class="c-pill" id="pillLeft" onclick="switchCompareAngle('left')">3. Sườn Trái</button>
+          <button class="c-pill" id="pillRight" onclick="switchCompareAngle('right')">4. Sườn Phải</button>
+          <button class="c-pill" id="pillTaplo" onclick="switchCompareAngle('taplo')">5. Taplo ODO & Xăng</button>
+        </div>
+
+        <!-- Side-by-side inspection view -->
+        <div class="compare-viewport">
+          <div class="compare-side">
+            <div class="compare-label badge-before">ẢNH LÚC NHẬN XE (BẮT ĐẦU CA)</div>
+            <div class="img-zoom-wrap">
+              <img id="compareImgBefore" src="" alt="Trước ca" />
+            </div>
+            <div class="compare-caption" id="compareCaptionBefore">Ghi chú trước ca: Không trầy xước</div>
+          </div>
+
+          <div class="compare-side">
+            <div class="compare-label badge-after">ẢNH LÚC TRẢ XE (KẾT THÚC CA)</div>
+            <div class="img-zoom-wrap">
+              <img id="compareImgAfter" src="" alt="Sau ca" />
+            </div>
+            <div class="compare-caption" id="compareCaptionAfter">Ghi chú sau ca: Xe nguyên vẹn</div>
+          </div>
+        </div>
+
+        <!-- Damage inspection alert banner -->
+        <div id="compareDamageBanner" class="inspection-alert-box" style="display:none;">
+          <span class="alert-icon">⚠️</span>
+          <div class="alert-text">
+            <strong>Tài xế đã khai báo sự cố / trầy xước:</strong>
+            <p id="compareDamageDetailText">--</p>
+          </div>
+        </div>
+
+        <!-- Trip stats overview -->
+        <div class="trip-quick-stats-row">
+          <div>Quãng đường: <b id="compStatKm" class="font-mono">-- km</b></div>
+          <div>ODO Nhận: <b id="compStatStartOdo" class="font-mono">--</b> → Trả: <b id="compStatEndOdo" class="font-mono">--</b></div>
+          <div>Nhiên liệu tiêu hao: <b id="compStatFuel" class="font-mono">-- Lít</b></div>
+          <div>Mức tiêu hao: <b id="compStatRate" class="font-mono">-- L/100km</b></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalComparePhotos')">Đóng Đối Soát</button>
+        <button class="btn btn-outline" onclick="printTripHandoverReport()">🖨️ In Biên Bản Bàn Giao</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL: DUYỆT PHIẾU CẤP NHIÊN LIỆU (FLEET MANAGER) -->
+  <div id="modalApproveFuel" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3>Phê Duyệt Phiếu Đổ Nhiên Liệu</h3>
+          <p id="approveModalTicketCode" class="text-muted">Mã phiếu: FL-2026-001</p>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalApproveFuel')">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="fuel-detail-card" id="approveModalDetails">
+          <!-- Filled by JS -->
+        </div>
+
+        <div class="receipt-photos-preview" id="approveModalPhotos">
+          <!-- Photos rendered by JS -->
+        </div>
+
+        <div class="form-group mt-3">
+          <label for="approveManagerNote">Ghi Chú Duyệt / Lý Do Từ Chối:</label>
+          <input type="text" id="approveManagerNote" class="form-control" placeholder="Vd: Đã đối chiếu hóa đơn hợp lệ..." />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-danger" onclick="confirmFuelApproval(false)">Từ Chối Phiếu</button>
+        <button class="btn btn-success" onclick="confirmFuelApproval(true)">✓ Phê Duyệt Cấp Nhiên Liệu</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL: THÊM XE MỚI -->
+  <div id="modalAddVehicle" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>+ Thêm Phương Tiện Mới Vào Đội Xe</h3>
+        <button class="modal-close" onclick="closeModal('modalAddVehicle')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="newVehPlate">Biển Số Xe <span class="req">*</span></label>
+            <input type="text" id="newVehPlate" class="form-control font-mono font-bold" placeholder="Vd: 29H-999.88" />
+          </div>
+          <div class="form-group">
+            <label for="newVehType">Loại Xe / Tải Trọng <span class="req">*</span></label>
+            <input type="text" id="newVehType" class="form-control" placeholder="Vd: Xe tải 2.5 Tấn - Isuzu" />
+          </div>
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label for="newVehTank">Dung Tích Bình (L)</label>
+            <input type="number" id="newVehTank" class="form-control" value="70" />
+          </div>
+          <div class="form-group">
+            <label for="newVehRate">Định Mức Chuẩn (L/100km)</label>
+            <input type="number" id="newVehRate" class="form-control" value="11.5" step="0.1" />
+          </div>
+          <div class="form-group">
+            <label for="newVehOdo">Số ODO Ban Đầu (km)</label>
+            <input type="number" id="newVehOdo" class="form-control font-mono" value="10000" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newVehFuelType">Nhiên Liệu Sử Dụng:</label>
+          <select id="newVehFuelType" class="form-control">
+            <option value="Dầu Diesel (DO)">Dầu Diesel (DO)</option>
+            <option value="Xăng RON 95">Xăng RON 95</option>
+            <option value="Điện EV">Điện EV</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalAddVehicle')">Hủy</button>
+        <button class="btn btn-primary" onclick="saveNewVehicle()">Lưu Phương Tiện</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL: THÊM TÀI XẾ MỚI -->
+  <div id="modalAddDriver" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>+ Thêm Tài Xế Mới</h3>
+        <button class="modal-close" onclick="closeModal('modalAddDriver')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="newDriverName">Họ Và Tên Tài Xế <span class="req">*</span></label>
+          <input type="text" id="newDriverName" class="form-control" placeholder="Vd: Trần Văn Nam" />
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="newDriverPhone">Số Điện Thoại</label>
+            <input type="text" id="newDriverPhone" class="form-control" placeholder="09xx..." />
+          </div>
+          <div class="form-group">
+            <label for="newDriverLicense">Hạng Bằng Lái</label>
+            <input type="text" id="newDriverLicense" class="form-control" placeholder="B2 / C / D / FC" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalAddDriver')">Hủy</button>
+        <button class="btn btn-primary" onclick="saveNewDriver()">Lưu Tài Xế</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

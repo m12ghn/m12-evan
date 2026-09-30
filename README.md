@@ -1,0 +1,32 @@
+# FleetOps — Quản lý xe, ODO & nhiên liệu
+
+Một link duy nhất, đăng nhập xong hệ thống tự chuyển theo **role**:
+- `manager` → trang **Quản lý** (`/manager`): đội xe, nhật ký ca, duyệt nhiên liệu.
+- `driver` → trang **Tài xế** (`/driver`): nhận xe, đổ nhiên liệu, trả xe.
+
+Stack: Vite + React + TypeScript · Supabase (Auth, Postgres, Storage) · Vercel · GitHub.
+
+## Cấu trúc
+```
+prototype/   Bản gốc HTML/JS (localStorage) — nguồn để port logic & giao diện
+src/         App React (Login, ManagerHome, DriverHome, auth theo role)
+supabase/    schema.sql (bảng + RLS + storage), seed.sql
+```
+
+## Thiết lập
+1. **Supabase**: tạo project → SQL Editor chạy `supabase/schema.sql`, rồi `supabase/seed.sql`.
+2. Tạo user ở Authentication → Users (tài xế + quản lý). Mặc định ai cũng là `driver`; nâng quản lý:
+   ```sql
+   update profiles set role = 'manager' where id = '<user-uuid>';
+   ```
+3. Chạy local:
+   ```bash
+   cp .env.example .env   # điền URL + anon key
+   npm install && npm run dev
+   ```
+4. **Vercel**: Import repo này từ GitHub, thêm 2 biến môi trường `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Mỗi lần push là tự deploy.
+
+## Việc tiếp theo
+- Port wizard nhận xe / trả xe / đổ nhiên liệu từ `prototype/app.js` sang `DriverHome` (ảnh upload vào bucket `photos`, thư mục `<user_id>/...`).
+- Port các tab quản lý (nhật ký ca, so sánh ảnh, duyệt phiếu, cài đặt xe/tài xế) sang `ManagerHome`.
+- Siết RLS cập nhật `vehicles` của tài xế bằng RPC.
