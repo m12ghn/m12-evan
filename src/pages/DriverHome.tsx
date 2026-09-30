@@ -19,7 +19,7 @@ export default function DriverHome() {
   }, [session]);
 
   return (
-    <Shell title="Tài xế">
+    <Shell title="Tài xế" mobile>
       {mine ? (
         <div className="card">
           <h3>Ca đang chạy: {mine.plate}</h3>

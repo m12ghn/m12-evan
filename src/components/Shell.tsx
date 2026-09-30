@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
 
-export default function Shell({ title, children }: { title: string; children: ReactNode }) {
+export default function Shell({ title, mobile, children }: { title: string; mobile?: boolean; children: ReactNode }) {
   const { profile, signOut } = useAuth();
   return (
     <div className="shell">
@@ -12,7 +12,7 @@ export default function Shell({ title, children }: { title: string; children: Re
           <button className="btn ghost" onClick={signOut}>Đăng xuất</button>
         </span>
       </header>
-      <main className="content">{children}</main>
+      <main className={`content${mobile ? " mobile" : ""}`}>{children}</main>
     </div>
   );
 }

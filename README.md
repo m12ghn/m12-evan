@@ -30,3 +30,7 @@ supabase/    schema.sql (bảng + RLS + storage), seed.sql
 - Port wizard nhận xe / trả xe / đổ nhiên liệu từ `prototype/app.js` sang `DriverHome` (ảnh upload vào bucket `photos`, thư mục `<user_id>/...`).
 - Port các tab quản lý (nhật ký ca, so sánh ảnh, duyệt phiếu, cài đặt xe/tài xế) sang `ManagerHome`.
 - Siết RLS cập nhật `vehicles` của tài xế bằng RPC.
+
+## Quy ước (bắt chước gxt-driver-truck)
+- **Màu/giao diện**: teal GHN `#0F9B94`, font Roboto, bo góc 12, nút gradient; trang tài xế giới hạn 480px. Biến CSS ở đầu `src/styles.css`.
+- **Lưu ảnh**: file trên Supabase Storage (bucket `photos`, tối đa 5MB), DB chỉ lưu đường dẫn trong cột jsonb (`photos_start`, `photos_end`), đọc lại bằng signed URL 7 ngày (`src/lib/storage.ts`).

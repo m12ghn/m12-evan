@@ -29,7 +29,7 @@ export default function ManagerHome() {
             {vehicles.map(v => (
               <tr key={v.id}>
                 <td>{v.plate}</td><td>{v.type}</td><td>{v.odo.toLocaleString()} km</td>
-                <td>{v.fuel_level}%</td><td>{v.status}</td>
+                <td>{v.fuel_level}%</td><td><span className={`chip ${v.status}`}>{v.status}</span></td>
               </tr>
             ))}
           </tbody>

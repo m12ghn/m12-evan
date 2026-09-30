@@ -123,7 +123,8 @@ create policy "refuels: tài xế tạo phiếu của mình" on refuels for inse
 create policy "refuels: manager duyệt" on refuels for update using (is_manager());
 
 -- 6. Storage ảnh (taplo, 4 góc xe, cột bơm, hóa đơn) -------------------------------
-insert into storage.buckets (id, name, public) values ('photos', 'photos', false)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  values ('photos', 'photos', false, 5242880, array['image/jpeg','image/png','image/webp'])
   on conflict do nothing;
 
 create policy "photos: đăng nhập được upload vào thư mục của mình" on storage.objects for insert
