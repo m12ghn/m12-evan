@@ -27,7 +27,7 @@ supabase/    schema.sql (bảng + RLS + storage), seed.sql
 4. **Vercel**: Import repo này từ GitHub (Framework: Vite, Root Directory để trống), thêm 2 biến môi trường `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Mỗi lần push là tự deploy.
 
 ## Việc tiếp theo
-- Port wizard nhận xe / trả xe / đổ nhiên liệu từ `prototype/app.js` sang `DriverHome` (ảnh upload vào bucket `photos`, thư mục `<user_id>/...`).
+- ✅ Tab tài xế đã làm: Chụp hình đầu ca, Cấp nhiên liệu / Cấp điện (một phiếu chung, xe dầu = lít, xe điện = kWh theo `vehicles.energy_type`), Chụp hình cuối ca.
 - Port các tab quản lý (nhật ký ca, so sánh ảnh, duyệt phiếu, cài đặt xe/tài xế) sang `ManagerHome`.
 - Siết RLS cập nhật `vehicles` của tài xế bằng RPC.
 

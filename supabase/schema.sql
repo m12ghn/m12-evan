@@ -42,11 +42,12 @@ create table public.vehicles (
   id uuid primary key default gen_random_uuid(),
   plate text unique not null,
   type text,
-  tank_liters numeric not null default 70,
-  std_rate numeric not null default 11,          -- định mức L/100km
-  fuel_type text not null default 'Dầu Diesel (DO)',
+  energy_type text not null default 'fuel' check (energy_type in ('fuel','electric')),
+  capacity numeric not null default 70,           -- dung tích bình (lít) hoặc pin (kWh)
+  std_rate numeric not null default 11,           -- định mức L/100km hoặc kWh/100km
+  fuel_type text not null default 'Dầu Diesel (DO)',  -- loại nhiên liệu; xe điện: 'Điện'
   odo integer not null default 0,
-  fuel_level integer not null default 50 check (fuel_level between 0 and 100),
+  energy_level integer not null default 50 check (energy_level between 0 and 100),  -- % bình / % pin
   status text not null default 'ready' check (status in ('ready','on_duty','maintenance')),
   driver_id uuid references public.profiles(id)
 );
@@ -61,11 +62,11 @@ create table public.trips (
   end_time timestamptz,
   start_odo integer not null,
   end_odo integer,
-  start_fuel integer not null,
-  end_fuel integer,
+  start_level integer not null,
+  end_level integer,
   km_driven integer,
-  fuel_consumed numeric,
-  fuel_rate numeric,
+  energy_consumed numeric,
+  energy_rate numeric  -- L/100km hoặc kWh/100km,
   pre_notes text,
   post_notes text,
   has_damage boolean not null default false,
@@ -75,19 +76,20 @@ create table public.trips (
   check (end_odo is null or end_odo >= start_odo)
 );
 
--- 4. Phiếu nhiên liệu -----------------------------------------------------------
+-- 4. Phiếu cấp nhiên liệu / cấp điện (một bảng chung) -----------------------------------------------------------
 create table public.refuels (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.trips(id) on delete cascade,
   driver_id uuid not null references public.profiles(id),
   created_at timestamptz not null default now(),
+  energy_type text not null default 'fuel',
   fuel_type text,
   odo_at_refuel integer not null,
-  liters numeric not null check (liters > 0),
-  unit_price numeric not null default 0,
-  total_amount numeric generated always as (liters * unit_price) stored,
-  gas_station text,
-  photo_pump text,
+  quantity numeric not null check (quantity > 0),   -- lít hoặc kWh
+  unit_price numeric not null default 0,            -- đ/lít hoặc đ/kWh
+  total_amount numeric generated always as (quantity * unit_price) stored,
+  station text,             -- trạm xăng / trạm sạc
+  photo_pump text,          -- ảnh cột bơm / màn hình trạm sạc
   photo_receipt text,
   status text not null default 'pending' check (status in ('pending','approved','rejected')),
   manager_note text

@@ -1,38 +1,61 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Shell from '../components/Shell';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
-import type { Vehicle } from '../lib/types';
+import { energyLabels, type Trip, type Vehicle } from '../lib/types';
+import CheckIn from './driver/CheckIn';
+import Refuel from './driver/Refuel';
+import CheckOut from './driver/CheckOut';
 
-// TODO: port từ prototype/app.js — wizard nhận xe, đổ nhiên liệu, trả xe (upload ảnh lên Storage bucket "photos").
+type View = 'home' | 'checkin' | 'refuel' | 'checkout';
+
 export default function DriverHome() {
   const { session } = useAuth();
-  const [mine, setMine] = useState<Vehicle | null>(null);
-  const [ready, setReady] = useState<Vehicle[]>([]);
+  const userId = session!.user.id;
+  const [view, setView] = useState<View>('home');
+  const [trip, setTrip] = useState<Trip | null>(null);
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!session) return;
-    supabase.from('vehicles').select('*').eq('driver_id', session.user.id).maybeSingle()
-      .then(({ data }) => setMine(data as Vehicle | null));
-    supabase.from('vehicles').select('*').eq('status', 'ready').order('plate')
-      .then(({ data }) => setReady((data as Vehicle[]) ?? []));
-  }, [session]);
+  const reload = useCallback(async () => {
+    const { data: t } = await supabase.from('trips').select('*').eq('driver_id', userId).eq('status', 'on_duty').maybeSingle();
+    setTrip(t as Trip | null);
+    if (t) {
+      const { data: v } = await supabase.from('vehicles').select('*').eq('id', t.vehicle_id).single();
+      setVehicle(v as Vehicle);
+    } else setVehicle(null);
+    setLoading(false);
+  }, [userId]);
+  useEffect(() => { reload(); }, [reload]);
+
+  const home = () => { setView('home'); reload(); };
+  const active = Boolean(trip && vehicle);
 
   return (
     <Shell title="Tài xế" mobile>
-      {mine ? (
-        <div className="card">
-          <h3>Ca đang chạy: {mine.plate}</h3>
-          <p className="muted">{mine.type} · ODO {mine.odo.toLocaleString()} km</p>
-          <button className="btn">⛽ Xin cấp nhiên liệu</button> <button className="btn ghost">Trả xe</button>
-        </div>
-      ) : (
-        <div className="card">
-          <h3>Nhận xe</h3>
-          <p className="muted">Chọn xe đang sẵn sàng tại bãi</p>
-          <ul>{ready.map(v => <li key={v.id}>{v.plate} — {v.type}</li>)}</ul>
-        </div>
-      )}
+      {loading ? <p className="muted">Đang tải…</p> :
+        view === 'checkin' ? <CheckIn userId={userId} onDone={home} onBack={() => setView('home')} /> :
+        view === 'refuel' && trip && vehicle ? <Refuel userId={userId} trip={trip} vehicle={vehicle} onBack={() => setView('home')} /> :
+        view === 'checkout' && trip && vehicle ? <CheckOut userId={userId} trip={trip} vehicle={vehicle} onDone={home} onBack={() => setView('home')} /> : (
+          <div className="stack">
+            {active && vehicle && trip && (
+              <div className="card">
+                <h3>Ca đang chạy: {vehicle.plate}</h3>
+                <p className="muted">{vehicle.type} · ODO đầu ca {trip.start_odo.toLocaleString()} km · {energyLabels(vehicle.energy_type).level} {trip.start_level}%</p>
+              </div>
+            )}
+            <button className="menu" disabled={active} onClick={() => setView('checkin')}>
+              <span>📸</span><div><b>Chụp hình đầu ca</b><small>Nhận xe, ODO, 5 ảnh</small></div>
+            </button>
+            <button className="menu" disabled={!active} onClick={() => setView('refuel')}>
+              <span>{vehicle?.energy_type === 'electric' ? '⚡' : '⛽'}</span>
+              <div><b>Cấp nhiên liệu / Cấp điện</b><small>Xin cấp trong ca, chờ quản lý duyệt</small></div>
+            </button>
+            <button className="menu" disabled={!active} onClick={() => setView('checkout')}>
+              <span>🏁</span><div><b>Chụp hình cuối ca</b><small>Trả xe, ODO cuối, 5 ảnh, tình trạng xe</small></div>
+            </button>
+          </div>
+        )}
     </Shell>
   );
 }

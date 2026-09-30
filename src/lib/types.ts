@@ -12,11 +12,39 @@ export interface Vehicle {
   id: string;
   plate: string;
   type: string | null;
-  tank_liters: number;
+  energy_type: 'fuel' | 'electric';
+  capacity: number;
   std_rate: number;
   fuel_type: string;
   odo: number;
-  fuel_level: number;
+  energy_level: number;
   status: 'ready' | 'on_duty' | 'maintenance';
   driver_id: string | null;
 }
+
+export interface Trip {
+  id: string;
+  vehicle_id: string;
+  driver_id: string;
+  status: 'on_duty' | 'completed';
+  start_time: string;
+  start_odo: number;
+  start_level: number;
+}
+
+export interface Refuel {
+  id: string;
+  created_at: string;
+  quantity: number;
+  unit_price: number;
+  total_amount: number;
+  energy_type: 'fuel' | 'electric';
+  odo_at_refuel: number;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+// Nhãn hiển thị dùng chung cho xe dầu/xăng và xe điện
+export const energyLabels = (t: Vehicle['energy_type']) =>
+  t === 'electric'
+    ? { name: 'Điện', level: 'Mức pin', unit: 'kWh', rate: 'kWh/100km', fill: 'Cấp điện', station: 'Trạm sạc', pump: 'Ảnh màn hình trạm sạc' }
+    : { name: 'Nhiên liệu', level: 'Mức nhiên liệu', unit: 'Lít', rate: 'L/100km', fill: 'Cấp nhiên liệu', station: 'Trạm xăng', pump: 'Ảnh đồng hồ cột bơm' };

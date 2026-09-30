@@ -24,12 +24,12 @@ export default function ManagerHome() {
       <div className="card">
         <h3>Đội xe</h3>
         <table>
-          <thead><tr><th>Biển số</th><th>Loại</th><th>ODO</th><th>Nhiên liệu</th><th>Trạng thái</th></tr></thead>
+          <thead><tr><th>Biển số</th><th>Loại</th><th>ODO</th><th>Nhiên liệu / Pin</th><th>Trạng thái</th></tr></thead>
           <tbody>
             {vehicles.map(v => (
               <tr key={v.id}>
                 <td>{v.plate}</td><td>{v.type}</td><td>{v.odo.toLocaleString()} km</td>
-                <td>{v.fuel_level}%</td><td><span className={`chip ${v.status}`}>{v.status}</span></td>
+                <td>{v.energy_level}%</td><td><span className={`chip ${v.status}`}>{v.status}</span></td>
               </tr>
             ))}
           </tbody>
