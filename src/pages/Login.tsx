@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { supabase, isConfigured } from '../lib/supabase';
 
+// Tài xế đăng nhập bằng MSNV; Supabase Auth cần email nên map MSNV -> <msnv>@fleetops.local
+const toEmail = (a: string) => (a.includes('@') ? a.trim() : `${a.trim().toLowerCase()}@fleetops.local`);
+
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -10,7 +13,7 @@ export default function Login() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: toEmail(account), password });
     if (error) setError(error.message);
     setBusy(false);
   }
@@ -21,7 +24,7 @@ export default function Login() {
         <h1>🚚 FleetOps</h1>
         <p className="muted">Đăng nhập để tiếp tục</p>
         {!isConfigured && <p className="error">Chưa cấu hình VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY</p>}
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+        <input placeholder="MSNV hoặc email" value={account} onChange={e => setAccount(e.target.value)} autoCapitalize="none" required />
         <input type="password" placeholder="Mật khẩu" value={password} onChange={e => setPassword(e.target.value)} required />
         {error && <p className="error">{error}</p>}
         <button className="btn" disabled={busy}>{busy ? 'Đang đăng nhập…' : 'Đăng nhập'}</button>

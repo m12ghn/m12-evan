@@ -15,7 +15,7 @@ supabase/    schema.sql (bảng + RLS + storage), seed.sql
 
 ## Thiết lập
 1. **Supabase**: tạo project → SQL Editor chạy `supabase/schema.sql`, rồi `supabase/seed.sql`.
-2. Tạo user ở Authentication → Users (tài xế + quản lý). Mặc định ai cũng là `driver`; nâng quản lý:
+2. Tạo user ở Authentication → Users. Tài xế dùng email dạng `<MSNV>@fleetops.local` (ví dụ `12345@fleetops.local`) và đăng nhập chỉ cần gõ MSNV; nhớ tick *Auto Confirm User*. Đặt `full_name` trong user metadata. Mặc định ai cũng là `driver`; nâng quản lý:
    ```sql
    update profiles set role = 'manager' where id = '<user-uuid>';
    ```
@@ -24,7 +24,7 @@ supabase/    schema.sql (bảng + RLS + storage), seed.sql
    cp .env.example .env   # điền URL + anon key
    npm install && npm run dev
    ```
-4. **Vercel**: Import repo này từ GitHub, thêm 2 biến môi trường `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Mỗi lần push là tự deploy.
+4. **Vercel**: Import repo này từ GitHub (Framework: Vite, Root Directory để trống), thêm 2 biến môi trường `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Mỗi lần push là tự deploy.
 
 ## Việc tiếp theo
 - Port wizard nhận xe / trả xe / đổ nhiên liệu từ `prototype/app.js` sang `DriverHome` (ảnh upload vào bucket `photos`, thư mục `<user_id>/...`).
