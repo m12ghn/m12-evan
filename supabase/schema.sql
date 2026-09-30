@@ -29,7 +29,8 @@ create trigger on_auth_user_created after insert on auth.users
 create or replace function public.protect_role() returns trigger
 language plpgsql as $$
 begin
-  if new.role is distinct from old.role and not public.is_manager() then
+  -- auth.uid() null = chạy từ SQL Editor / service role (quản trị hệ thống) → cho phép
+  if new.role is distinct from old.role and auth.uid() is not null and not public.is_manager() then
     raise exception 'Không được đổi role';
   end if;
   return new;
