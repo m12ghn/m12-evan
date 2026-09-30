@@ -19,6 +19,7 @@ supabase/    schema.sql (bảng + RLS + storage), seed.sql
    ```sql
    update profiles set role = 'manager' where id = '<user-uuid>';
    ```
+   Hoặc chạy nhanh `supabase/test-users.sql` để có sẵn 2 tài khoản test (admin + tài xế MSNV 10001).
 3. Chạy local:
    ```bash
    cp .env.example .env   # điền URL + anon key
