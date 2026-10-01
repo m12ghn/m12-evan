@@ -17,7 +17,11 @@ export default function PhotoInput({ label, value, onChange }: Props) {
       {preview ? <img src={preview} alt={label} /> : <span>📷</span>}
       <small>{label}</small>
       <input type="file" accept="image/*" capture="environment" hidden
-        onChange={async e => { const f = e.target.files?.[0]; if (f) onChange(await compressImage(f)); }} />
+        onChange={async e => {
+          const f = e.target.files?.[0]; e.target.value = '';
+          if (!f) return;
+          try { onChange(await compressImage(f)); } catch { alert('Không xử lý được ảnh, vui lòng chụp lại.'); }
+        }} />
     </label>
   );
 }
