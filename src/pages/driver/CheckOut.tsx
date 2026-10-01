@@ -25,22 +25,12 @@ export default function CheckOut({ userId, trip, vehicle, onDone, onBack }:
     try {
       const paths: Record<string, string> = {};
       for (const [k, blob] of Object.entries(photos)) paths[k] = await uploadPhoto(userId, 'checkout', blob!);
-      // Tiêu thụ = (% đầu − % cuối) × dung tích + lượng đã cấp (không tính phiếu bị từ chối)
-      const { data: fills } = await supabase.from('refuels').select('quantity').eq('trip_id', trip.id).neq('status', 'rejected');
-      const filled = (fills ?? []).reduce((s, r) => s + Number(r.quantity), 0);
-      const consumed = Math.max(0, ((trip.start_level - level) / 100) * vehicle.capacity + filled);
-      const rate = km > 0 ? Number(((consumed / km) * 100).toFixed(1)) : 0;
-
-      const { error: e1 } = await supabase.from('trips').update({
-        status: 'completed', end_time: new Date().toISOString(), end_odo: endOdo, end_level: level,
-        km_driven: km, energy_consumed: Number(consumed.toFixed(1)), energy_rate: rate,
-        has_damage: damaged, damage_notes: damaged ? note : null, photos_end: paths,
-      }).eq('id', trip.id);
-      if (e1) throw e1;
-      const { error: e2 } = await supabase.from('vehicles').update({
-        status: damaged ? 'maintenance' : 'ready', driver_id: null, odo: endOdo, energy_level: level,
-      }).eq('id', vehicle.id);
-      if (e2) throw e2;
+      // Tính tiêu hao & cập nhật xe được thực hiện trọn gói trong DB (end_trip)
+      const { error: e } = await supabase.rpc('end_trip', {
+        p_trip: trip.id, p_end_odo: endOdo, p_end_level: level,
+        p_damage: damaged, p_damage_notes: damaged ? note : null, p_photos: paths,
+      });
+      if (e) throw e;
       onDone();
     } catch (e) { setError((e as Error).message); setBusy(false); }
   }
