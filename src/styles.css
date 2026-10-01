@@ -90,3 +90,12 @@ h4 { margin: 12px 0 6px; }
 .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: var(--gray); }
 .filters input, .filters select { font-size: 14px; padding: 8px; color: var(--ink); }
+button.photo { background: none; font: inherit; width: 100%; }
+.cam { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; flex-direction: column; }
+.cam video { flex: 1; width: 100%; min-height: 0; object-fit: contain; background: #000; }
+.cam-top { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; color: #fff; background: linear-gradient(#000a, transparent); }
+.cam-top button { background: #0008; color: #fff; border: 0; border-radius: 50%; width: 38px; height: 38px; font-size: 18px; }
+.cam-wait { position: absolute; top: 50%; left: 0; right: 0; text-align: center; color: #fff; }
+.cam-bottom { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; padding: 22px; background: linear-gradient(transparent, #000a); }
+.shutter { width: 72px; height: 72px; border-radius: 50%; border: 5px solid #fff; background: var(--teal); }
+.shutter:disabled { opacity: .5; }
