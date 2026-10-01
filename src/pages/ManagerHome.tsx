@@ -1,40 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Shell from '../components/Shell';
 import { supabase } from '../lib/supabase';
-import type { Vehicle } from '../lib/types';
+import { useLookups } from '../lib/useLookups';
+import Fleet from './manager/Fleet';
+import Trips from './manager/Trips';
+import Fuel from './manager/Fuel';
+import Settings from './manager/Settings';
 
-// TODO: port từ prototype/app.js — tab Đội xe, Nhật ký ca, Duyệt nhiên liệu, Cài đặt.
+type Tab = 'fleet' | 'trips' | 'fuel' | 'settings';
+
 export default function ManagerHome() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const lk = useLookups();
+  const [tab, setTab] = useState<Tab>('fleet');
+  const [pending, setPending] = useState(0);
 
-  useEffect(() => {
-    supabase.from('vehicles').select('*').order('plate').then(({ data }) => setVehicles((data as Vehicle[]) ?? []));
+  const loadPending = useCallback(async () => {
+    const { count } = await supabase.from('refuels').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+    setPending(count ?? 0);
   }, []);
+  useEffect(() => { loadPending(); }, [loadPending]);
 
-  const count = (s: Vehicle['status']) => vehicles.filter(v => v.status === s).length;
-
+  const tabs: [Tab, string][] = [['fleet', '🚚 Đội xe'], ['trips', '📋 Nhật ký ca'], ['fuel', '⛽ Duyệt nhiên liệu/điện'], ['settings', '⚙️ Cài đặt']];
   return (
     <Shell title="Quản lý">
-      <div className="kpis">
-        <div className="card"><b>{vehicles.length}</b><span>Tổng xe</span></div>
-        <div className="card"><b>{count('on_duty')}</b><span>Đang vận hành</span></div>
-        <div className="card"><b>{count('ready')}</b><span>Sẵn sàng</span></div>
-        <div className="card"><b>{count('maintenance')}</b><span>Bảo dưỡng</span></div>
-      </div>
-      <div className="card">
-        <h3>Đội xe</h3>
-        <table>
-          <thead><tr><th>Biển số</th><th>Loại</th><th>ODO</th><th>Nhiên liệu / Pin</th><th>Trạng thái</th></tr></thead>
-          <tbody>
-            {vehicles.map(v => (
-              <tr key={v.id}>
-                <td>{v.plate}</td><td>{v.type}</td><td>{v.odo.toLocaleString()} km</td>
-                <td>{v.energy_level}%</td><td><span className={`chip ${v.status}`}>{v.status}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <nav className="tabs">
+        {tabs.map(([k, label]) => (
+          <button key={k} className={tab === k ? 'active' : ''} onClick={() => { setTab(k); if (k === 'fleet') lk.reload(); }}>
+            {label}{k === 'fuel' && pending > 0 && <span className="badge">{pending}</span>}
+          </button>
+        ))}
+      </nav>
+      {tab === 'fleet' && <Fleet lk={lk} />}
+      {tab === 'trips' && <Trips lk={lk} />}
+      {tab === 'fuel' && <Fuel lk={lk} onChanged={loadPending} />}
+      {tab === 'settings' && <Settings lk={lk} />}
     </Shell>
   );
 }

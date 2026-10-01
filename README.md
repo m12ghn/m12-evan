@@ -29,7 +29,7 @@ supabase/    schema.sql (bảng + RLS + storage), seed.sql
 
 ## Việc tiếp theo
 - ✅ Tab tài xế đã làm: Chụp hình đầu ca, Cấp nhiên liệu / Cấp điện (một phiếu chung, xe dầu = lít, xe điện = kWh theo `vehicles.energy_type`), Chụp hình cuối ca.
-- Port các tab quản lý (nhật ký ca, so sánh ảnh, duyệt phiếu, cài đặt xe/tài xế) sang `ManagerHome`.
+- ✅ Trang quản lý đã làm: Đội xe, Nhật ký ca (xem ảnh đầu/cuối ca, cảnh báo vượt định mức), Duyệt nhiên liệu/điện, Cài đặt (thêm/sửa xe, sửa hồ sơ người dùng).
 - Siết RLS cập nhật `vehicles` của tài xế bằng RPC.
 
 ## Quy ước (bắt chước gxt-driver-truck)

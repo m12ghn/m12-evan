@@ -63,3 +63,21 @@ th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border);
 .photo small { font-size: 12px; color: var(--gray); padding: 0 4px; }
 .photo.done { border-style: solid; border-color: var(--teal); }
 .photo img { width: 100%; height: 90px; object-fit: cover; }
+
+.tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.tabs button { background: none; border: 0; padding: 10px 14px; font: inherit; font-weight: 500; color: var(--gray); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+.tabs button.active { color: var(--teal-dark); border-bottom-color: var(--teal); }
+.badge { background: var(--error); color: #fff; border-radius: 999px; padding: 1px 7px; font-size: 11px; margin-left: 6px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.grid .card { margin: 0; }
+.bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 8px 0 4px; }
+.bar div { height: 100%; background: var(--success); }
+.bar div.mid { background: var(--warning); } .bar div.low { background: var(--error); }
+.scroll { overflow-x: auto; }
+.thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.thumbs a { display: flex; flex-direction: column; width: 110px; text-decoration: none; color: var(--gray); font-size: 12px; }
+.thumbs img { width: 110px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.form-grid label { display: flex; flex-direction: column; gap: 4px; font-weight: 500; }
+td input { width: 100%; min-width: 110px; padding: 6px; font-size: 14px; }
+h4 { margin: 12px 0 6px; }
