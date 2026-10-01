@@ -35,14 +35,17 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
     try {
       const paths: Record<string, string> = {};
       for (const [k, blob] of Object.entries(photos)) paths[k] = await uploadPhoto(userId, 'checkin', blob!);
+      const { data: open } = await supabase.from('trips').select('id').eq('driver_id', userId).eq('status', 'on_duty').limit(1);
+      if (open?.length) throw new Error('Bạn đang có ca chưa trả xe. Hãy chụp hình cuối ca trước.');
       const { error: e1 } = await supabase.from('trips').insert({
         vehicle_id: v.id, driver_id: userId, start_odo: Number(odo), start_level: level,
         pre_notes: notes || null, photos_start: paths,
       });
       if (e1) throw e1;
-      const { error: e2 } = await supabase.from('vehicles')
-        .update({ status: 'on_duty', driver_id: userId, odo: Number(odo), energy_level: level }).eq('id', v.id);
+      const { data: upd, error: e2 } = await supabase.from('vehicles')
+        .update({ status: 'on_duty', driver_id: userId, odo: Number(odo), energy_level: level }).eq('id', v.id).select();
       if (e2) throw e2;
+      if (!upd?.length) throw new Error('Không cập nhật được trạng thái xe (xe đã có người nhận?)');
       onDone();
     } catch (e) { setError((e as Error).message); setBusy(false); }
   }

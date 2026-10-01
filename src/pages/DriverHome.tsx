@@ -16,13 +16,20 @@ export default function DriverHome() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const reload = useCallback(async () => {
-    const { data: t } = await supabase.from('trips').select('*').eq('driver_id', userId).eq('status', 'on_duty').maybeSingle();
-    setTrip(t as Trip | null);
+    setLoadError('');
+    // Lấy ca đang chạy mới nhất (không dùng maybeSingle để tránh lỗi khi có nhiều ca dở dang)
+    const { data: rows, error: e1 } = await supabase.from('trips').select('*')
+      .eq('driver_id', userId).eq('status', 'on_duty').order('start_time', { ascending: false }).limit(1);
+    if (e1) setLoadError(`Không đọc được ca đang chạy: ${e1.message}`);
+    const t = (rows?.[0] as Trip | undefined) ?? null;
+    setTrip(t);
     if (t) {
-      const { data: v } = await supabase.from('vehicles').select('*').eq('id', t.vehicle_id).single();
-      setVehicle(v as Vehicle);
+      const { data: v, error: e2 } = await supabase.from('vehicles').select('*').eq('id', t.vehicle_id).limit(1);
+      if (e2) setLoadError(`Không đọc được thông tin xe: ${e2.message}`);
+      setVehicle((v?.[0] as Vehicle | undefined) ?? null);
     } else setVehicle(null);
     setLoading(false);
   }, [userId]);
@@ -30,6 +37,7 @@ export default function DriverHome() {
 
   const home = () => { setView('home'); reload(); };
   const active = Boolean(trip && vehicle);
+  const hasTripNoVehicle = Boolean(trip && !vehicle);
 
   return (
     <Shell title="Tài xế" mobile>
@@ -38,6 +46,9 @@ export default function DriverHome() {
         view === 'refuel' && trip && vehicle ? <Refuel userId={userId} trip={trip} vehicle={vehicle} onBack={() => setView('home')} /> :
         view === 'checkout' && trip && vehicle ? <CheckOut userId={userId} trip={trip} vehicle={vehicle} onDone={home} onBack={() => setView('home')} /> : (
           <div className="stack">
+            {loadError && <p className="error">{loadError}</p>}
+            {hasTripNoVehicle && <p className="error">Có ca đang chạy nhưng không tải được xe. Thử tải lại trang.</p>}
+            {!active && !loadError && <p className="muted">Chưa có ca đang chạy. Hãy chụp hình đầu ca để mở khóa 2 chức năng còn lại.</p>}
             {active && vehicle && trip && (
               <div className="card">
                 <h3>Ca đang chạy: {vehicle.plate}</h3>
