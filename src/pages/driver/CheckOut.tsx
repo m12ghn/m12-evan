@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { uploadPhoto } from '../../lib/storage';
 import { energyLabels, type Trip, type Vehicle } from '../../lib/types';
+import { useDraft } from '../../lib/draft';
 import PhotoSet, { photosComplete, type Photos } from './PhotoSet';
 
 export default function CheckOut({ userId, trip, vehicle, onDone, onBack }:
@@ -14,6 +15,14 @@ export default function CheckOut({ userId, trip, vehicle, onDone, onBack }:
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const draft = useDraft(`checkout:${trip.id}`, { odo, level, photos, damaged, note }, d => {
+    if (d.odo !== undefined) setOdo(d.odo);
+    if (d.level !== undefined) setLevel(d.level);
+    if (d.photos) setPhotos(d.photos);
+    if (d.damaged !== undefined) setDamaged(d.damaged);
+    if (d.note !== undefined) setNote(d.note);
+  });
 
   const endOdo = Number(odo);
   const odoOk = odo !== '' && endOdo >= trip.start_odo;
@@ -31,6 +40,7 @@ export default function CheckOut({ userId, trip, vehicle, onDone, onBack }:
         p_damage: damaged, p_damage_notes: damaged ? note : null, p_photos: paths,
       });
       if (e) throw e;
+      await draft.clear();
       onDone();
     } catch (e) { setError((e as Error).message); setBusy(false); }
   }

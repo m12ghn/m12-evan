@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { uploadPhoto } from '../../lib/storage';
 import { energyLabels, type Refuel as RefuelRow, type Trip, type Vehicle } from '../../lib/types';
+import { useDraft } from '../../lib/draft';
 import PhotoInput from '../../components/PhotoInput';
 
 const STATUS = { pending: '⏳ Chờ duyệt', approved: '✓ Đã duyệt', rejected: '❌ Từ chối' } as const;
@@ -18,6 +19,15 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
   const [receipt, setReceipt] = useState<Blob | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const draft = useDraft(`refuel:${trip.id}`, { odo, qty, price, station, pump, receipt }, d => {
+    if (d.odo !== undefined) setOdo(d.odo);
+    if (d.qty !== undefined) setQty(d.qty);
+    if (d.price !== undefined) setPrice(d.price);
+    if (d.station !== undefined) setStation(d.station);
+    if (d.pump !== undefined) setPump(d.pump);
+    if (d.receipt !== undefined) setReceipt(d.receipt);
+  });
 
   const load = () => supabase.from('refuels').select('*').eq('trip_id', trip.id).order('created_at', { ascending: false })
     .then(({ data }) => setList((data as RefuelRow[]) ?? []));
@@ -38,6 +48,7 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
       });
       if (e) throw e;
       setQty(''); setPump(null); setReceipt(null); setStation('');
+      await draft.clear();
       await load();
     } catch (e) { setError((e as Error).message); }
     setBusy(false);

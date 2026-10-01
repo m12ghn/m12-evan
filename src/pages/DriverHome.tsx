@@ -12,7 +12,11 @@ type View = 'home' | 'checkin' | 'refuel' | 'checkout';
 export default function DriverHome() {
   const { session } = useAuth();
   const userId = session!.user.id;
-  const [view, setView] = useState<View>('home');
+  const viewKey = `fleetops-view:${userId}`;
+  const [view, setViewState] = useState<View>(() => {
+    try { return (localStorage.getItem(viewKey) as View) || 'home'; } catch { return 'home'; }
+  });
+  const setView = (v: View) => { setViewState(v); try { localStorage.setItem(viewKey, v); } catch { /* bỏ qua */ } };
   const [trip, setTrip] = useState<Trip | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);

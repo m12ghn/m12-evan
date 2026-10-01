@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { uploadPhoto } from '../../lib/storage';
 import { energyLabels, type Vehicle } from '../../lib/types';
+import { useDraft } from '../../lib/draft';
 import PhotoSet, { photosComplete, type Photos } from './PhotoSet';
 
 export default function CheckIn({ userId, onDone, onBack }: { userId: string; onDone: () => void; onBack: () => void }) {
@@ -14,6 +15,15 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
   const [photos, setPhotos] = useState<Photos>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const draft = useDraft(`checkin:${userId}`, { vehicleId, odo, level, notes, agree, photos }, d => {
+    if (d.vehicleId !== undefined) setVehicleId(d.vehicleId);
+    if (d.odo !== undefined) setOdo(d.odo);
+    if (d.level !== undefined) setLevel(d.level);
+    if (d.notes !== undefined) setNotes(d.notes);
+    if (d.agree !== undefined) setAgree(d.agree);
+    if (d.photos) setPhotos(d.photos);
+  });
 
   useEffect(() => {
     supabase.from('vehicles').select('*').eq('status', 'ready').order('plate')
@@ -39,6 +49,7 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
         p_vehicle: v.id, p_odo: Number(odo), p_level: level, p_notes: notes, p_photos: paths,
       });
       if (e) throw e;
+      await draft.clear();
       onDone();
     } catch (e) { setError((e as Error).message); setBusy(false); }
   }
