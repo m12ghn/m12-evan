@@ -35,9 +35,13 @@ export default async function handler(req, res) {
       });
       if (error) return fail(res, 400, friendly(error.message));
       const role = b.role === 'manager' ? 'manager' : 'driver';
-      await admin.from('profiles').update({
+      const { error: pErr } = await admin.from('profiles').update({
         role, email, full_name: b.full_name || null, phone: b.phone || null, license: b.license || null,
       }).eq('id', data.user.id);
+      if (pErr) {
+        await admin.auth.admin.deleteUser(data.user.id); // không để lại tài khoản dở dang
+        return fail(res, 500, `Không lưu được hồ sơ (${pErr.message}). Đã chạy supabase/migration-002-profile-email.sql chưa?`);
+      }
       return res.json({ ok: true, id: data.user.id });
     }
 
@@ -55,7 +59,10 @@ export default async function handler(req, res) {
       if (!patch.email && !patch.password) return fail(res, 400, 'Không có gì để cập nhật');
       const { error } = await admin.auth.admin.updateUserById(b.id, patch);
       if (error) return fail(res, 400, friendly(error.message));
-      if (patch.email) await admin.from('profiles').update({ email: patch.email }).eq('id', b.id);
+      if (patch.email) {
+        const { error: pErr } = await admin.from('profiles').update({ email: patch.email }).eq('id', b.id);
+        if (pErr) return fail(res, 500, `Đã đổi đăng nhập nhưng không lưu được hồ sơ (${pErr.message}). Chạy supabase/migration-002-profile-email.sql rồi thử lại.`);
+      }
       return res.json({ ok: true });
     }
 
