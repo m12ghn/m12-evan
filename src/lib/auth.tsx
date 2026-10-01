@@ -16,6 +16,11 @@ const Ctx = createContext<AuthState>({
 
 export const useAuth = () => useContext(Ctx);
 
+// Bắt đăng nhập lại sau N ngày kể từ lần đăng nhập gần nhất (Supabase tự gia hạn phiên nên phải tự giới hạn)
+const MAX_SESSION_DAYS = 3;
+const expired = (s: Session | null) =>
+  Boolean(s?.user.last_sign_in_at) && Date.now() - Date.parse(s!.user.last_sign_in_at!) > MAX_SESSION_DAYS * 86400_000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -23,14 +28,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
+      if (expired(data.session)) { supabase.auth.signOut(); return; }
       setSession(data.session);
       if (!data.session) setLoading(false);
     });
+    // Kiểm tra lại khi mở lại tab và mỗi 10 phút (cho trường hợp để app mở lâu)
+    const check = () => supabase.auth.getSession().then(({ data }) => { if (expired(data.session)) supabase.auth.signOut(); });
+    const timer = setInterval(check, 10 * 60 * 1000);
+    document.addEventListener('visibilitychange', check);
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       if (!s) { setProfile(null); setLoading(false); }
     });
-    return () => sub.subscription.unsubscribe();
+    return () => { sub.subscription.unsubscribe(); clearInterval(timer); document.removeEventListener('visibilitychange', check); };
   }, []);
 
   useEffect(() => {
