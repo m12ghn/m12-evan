@@ -81,3 +81,12 @@ th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border);
 .form-grid label { display: flex; flex-direction: column; gap: 4px; font-weight: 500; }
 td input { width: 100%; min-width: 110px; padding: 6px; font-size: 14px; }
 h4 { margin: 12px 0 6px; }
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.logo-pill { height: 28px; width: auto; background: var(--white); padding: 4px 8px; border-radius: 8px; display: block; }
+.login-logo { height: 48px; width: auto; align-self: center; object-fit: contain; }
+.slogan { text-align: center; color: var(--teal); font-weight: 700; font-size: 12px; letter-spacing: 1.5px; margin: 0; }
+.center-text { text-align: center; margin: 0; }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: var(--gray); }
+.filters input, .filters select { font-size: 14px; padding: 8px; color: var(--ink); }

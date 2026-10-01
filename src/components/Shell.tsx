@@ -6,7 +6,7 @@ export default function Shell({ title, mobile, children }: { title: string; mobi
   return (
     <div className="shell">
       <header className="topbar">
-        <b>🚚 FleetOps · {title}</b>
+        <span className="brand"><img className="logo-pill" src="/ghn-logo.png" alt="GHN" /><b>FleetOps · {title}</b></span>
         <span>
           {profile?.full_name ?? 'Người dùng'} &nbsp;
           <button className="btn ghost" onClick={signOut}>Đăng xuất</button>

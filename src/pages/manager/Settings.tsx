@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { Fragment, useState, type FormEvent } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Lookups } from '../../lib/useLookups';
 import type { Vehicle } from '../../lib/types';
+import { adminUsers, usernameOf } from '../../lib/adminApi';
+import BulkVehicles from './BulkVehicles';
 
 const empty = { plate: '', type: '', energy_type: 'fuel', capacity: 70, std_rate: 11, fuel_type: 'Dầu Diesel (DO)', odo: 0, energy_level: 50, status: 'ready' };
 type Form = typeof empty & { id?: string };
@@ -55,6 +57,8 @@ export default function Settings({ lk }: { lk: Lookups }) {
           {f.id && <button type="button" className="btn ghost" onClick={() => setF(empty)}>Hủy sửa</button>}</div>
       </form>
 
+      <BulkVehicles lk={lk} />
+
       <div className="card scroll">
         <h3>Danh sách xe ({lk.vehicles.length})</h3>
         <table><thead><tr><th>Biển số</th><th>Loại</th><th>Năng lượng</th><th>Định mức</th><th></th></tr></thead><tbody>
@@ -65,18 +69,79 @@ export default function Settings({ lk }: { lk: Lookups }) {
         </tbody></table>
       </div>
 
-      <div className="card scroll">
-        <h3>Người dùng ({lk.people.length})</h3>
-        <p className="muted">Sửa trực tiếp họ tên, SĐT, hạng bằng. Tạo tài khoản mới: Supabase → Authentication → Add user (email dạng <code>MSNV@fleetops.local</code>).</p>
-        <table><thead><tr><th>Họ tên</th><th>SĐT</th><th>Bằng lái</th><th>Quyền</th></tr></thead><tbody>
-          {lk.people.map(p => (
-            <tr key={p.id}>
-              {(['full_name', 'phone', 'license'] as const).map(k => (
-                <td key={k}><input defaultValue={p[k] ?? ''} onBlur={e => e.target.value !== (p[k] ?? '') && savePerson(p.id, k, e.target.value)} /></td>
-              ))}
-              <td><span className="chip">{p.role === 'manager' ? 'Quản lý' : 'Tài xế'}</span></td>
-            </tr>
-          ))}
+      <UsersSection lk={lk} savePerson={savePerson} />
+    </div>
+  );
+}
+
+type PersonField = 'full_name' | 'phone' | 'license';
+
+function UsersSection({ lk, savePerson }: { lk: Lookups; savePerson: (id: string, f: PersonField, v: string) => void }) {
+  const [editId, setEditId] = useState('');
+  const [uname, setUname] = useState('');
+  const [pw, setPw] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [nu, setNu] = useState({ username: '', password: '', full_name: '', phone: '', license: '', role: 'driver' as 'driver' | 'manager' });
+  const [error, setError] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function run(fn: () => Promise<unknown>, ok: string) {
+    setBusy(true); setError(''); setMsg('');
+    try { await fn(); setMsg(ok); lk.reload(); return true; } catch (e) { setError((e as Error).message); return false; } finally { setBusy(false); }
+  }
+  const saveCreds = async (id: string, current: string) => {
+    const username = uname.trim() && uname.trim() !== current ? uname.trim() : undefined;
+    if (await run(() => adminUsers({ action: 'update', id, username, password: pw || undefined }), 'Đã cập nhật tài khoản')) { setEditId(''); setPw(''); }
+  };
+  const create = async () => {
+    if (await run(() => adminUsers({ action: 'create', ...nu }), `Đã tạo tài khoản ${nu.username}`)) {
+      setAdding(false); setNu({ username: '', password: '', full_name: '', phone: '', license: '', role: 'driver' });
+    }
+  };
+
+  return (
+    <div className="card stack">
+      <div className="row between"><h3>Người dùng ({lk.people.length})</h3>
+        <button className="btn" onClick={() => setAdding(!adding)}>{adding ? 'Đóng' : '+ Thêm người dùng'}</button></div>
+      {error && <p className="error">{error}</p>}{msg && <p style={{ color: 'var(--success)' }}>{msg}</p>}
+      {adding && (
+        <div className="stack" style={{ background: 'var(--bg)', padding: 12, borderRadius: 12 }}>
+          <div className="form-grid">
+            <label>Tên đăng nhập (MSNV)<input value={nu.username} onChange={e => setNu({ ...nu, username: e.target.value })} /></label>
+            <label>Mật khẩu (≥ 6 ký tự)<input type="text" value={nu.password} onChange={e => setNu({ ...nu, password: e.target.value })} /></label>
+            <label>Họ tên<input value={nu.full_name} onChange={e => setNu({ ...nu, full_name: e.target.value })} /></label>
+            <label>SĐT<input value={nu.phone} onChange={e => setNu({ ...nu, phone: e.target.value })} /></label>
+            <label>Hạng bằng<input value={nu.license} onChange={e => setNu({ ...nu, license: e.target.value })} /></label>
+            <label>Quyền<select value={nu.role} onChange={e => setNu({ ...nu, role: e.target.value as 'driver' | 'manager' })}><option value="driver">Tài xế</option><option value="manager">Quản lý</option></select></label>
+          </div>
+          <button className="btn" disabled={busy || !nu.username || nu.password.length < 6} onClick={create}>{busy ? 'Đang tạo…' : 'Tạo tài khoản'}</button>
+        </div>
+      )}
+      <div className="scroll">
+        <table><thead><tr><th>Tên đăng nhập</th><th>Họ tên</th><th>SĐT</th><th>Bằng lái</th><th>Quyền</th><th></th></tr></thead><tbody>
+          {lk.people.map(p => {
+            const cur = usernameOf(p.email);
+            return (
+              <Fragment key={p.id}>
+                <tr>
+                  <td><b>{cur || '—'}</b></td>
+                  {(['full_name', 'phone', 'license'] as const).map(k => (
+                    <td key={k}><input defaultValue={p[k] ?? ''} onBlur={e => e.target.value !== (p[k] ?? '') && savePerson(p.id, k, e.target.value)} /></td>
+                  ))}
+                  <td><span className="chip">{p.role === 'manager' ? 'Quản lý' : 'Tài xế'}</span></td>
+                  <td><button className="btn ghost" onClick={() => { setEditId(editId === p.id ? '' : p.id); setUname(cur); setPw(''); setError(''); setMsg(''); }}>Đổi TK / MK</button></td>
+                </tr>
+                {editId === p.id && (
+                  <tr><td colSpan={6}><div className="row" style={{ flexWrap: 'wrap' }}>
+                    <label className="stack">Tên đăng nhập mới<input value={uname} onChange={e => setUname(e.target.value)} /></label>
+                    <label className="stack">Mật khẩu mới (bỏ trống = giữ nguyên)<input type="text" value={pw} onChange={e => setPw(e.target.value)} /></label>
+                    <button className="btn" disabled={busy} onClick={() => saveCreds(p.id, cur)}>{busy ? 'Đang lưu…' : 'Lưu'}</button>
+                  </div></td></tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody></table>
       </div>
     </div>
