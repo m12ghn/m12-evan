@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { telegramApi } from '../../lib/notify';
 
 interface Cfg { enabled: boolean; default_chat: string; checkin_chat: string; refuel_chat: string; checkout_chat: string }
-interface Log { id: number; at: string; event: string; chat_id: string | null; status: 'pending' | 'sent' | 'failed'; error: string | null }
+interface Log { id: number; at: string; event: string; chat_id: string | null; status: 'pending' | 'sent' | 'failed' | 'skipped'; error: string | null }
 interface Status { tokenConfigured: boolean; bot?: string; tokenError?: string }
 interface Hook { configured: boolean; url: string | null; pg_net: boolean; cron: boolean }
 
@@ -160,8 +160,8 @@ export default function TelegramSettings() {
             <tr key={l.id}>
               <td>{new Date(l.at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</td>
               <td>{EVENT[l.event] ?? l.event}</td><td>{l.chat_id}</td>
-              <td>{l.status === 'sent' ? '✓ Đã gửi' : l.status === 'pending' ? '⏳ Đang gửi' : <span className="error">✗ {l.error}</span>}</td>
-              <td>{l.status === 'failed' && l.event !== 'test' && <button className="btn ghost" disabled={busy !== ''} onClick={() => resend(l.id)}>Gửi lại</button>}</td>
+              <td>{l.status === 'sent' ? '✓ Đã gửi' : l.status === 'pending' ? '⏳ Đang gửi' : l.status === 'skipped' ? <span style={{ color: 'var(--warning)' }}>⏸ Chưa gửi: {l.error}</span> : <span className="error">✗ {l.error}</span>}</td>
+              <td>{(l.status === 'failed' || l.status === 'skipped') && l.event !== 'test' && <button className="btn ghost" disabled={busy !== ''} onClick={() => resend(l.id)}>Gửi lại</button>}</td>
             </tr>
           ))}
           {logs.length === 0 && <tr><td colSpan={5} className="muted">Chưa có tin nào</td></tr>}

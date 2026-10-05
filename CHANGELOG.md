@@ -28,12 +28,14 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🐞 Sửa lỗi
 
+- **Telegram: tin chưa gửi được giờ hiện rõ lý do thay vì im lặng** _(Quản lý)_ — Khi chưa có token, chưa bật gửi tin hoặc chưa nhập Chat ID, bảng Tin gần đây ghi dòng Chưa gửi kèm lý do cụ thể và nút Gửi lại. Cấu hình xong chỉ cần bấm Gửi lại hoặc Quét và gửi bù.
 - **Gửi lại sau khi mất mạng không bị tạo trùng hoặc báo lỗi nhầm** _(Tài xế)_ — Phiếu nhiên liệu/điện và báo cáo tai nạn không bị ghi hai lần khi gửi lại. Nhận xe/trả xe mà lần trước đã thành công thì tự làm mới màn hình thay vì báo lỗi.
 - **Duyệt phiếu: phiếu cũ không còn hiện biển số "—"** _(Quản lý)_ — Trước đây chỉ tra cứu xe trong 500 ca gần nhất nên phiếu của ca cũ bị mất biển số.
 - **Mở ảnh ở tab mới không làm tab gốc bị tải lại** _(Cả hai)_ — Trước đây quay lại tab gốc thì trang quản lý bị dựng lại, mất bộ lọc và chi tiết đang mở. `4a90d9c`
 
 ### ⚙️ Hệ thống
 
+- **Cơ sở dữ liệu: migration 010 (trạng thái skipped của nhật ký Telegram)** _(Cả hai)_ — Cho phép nhật ký Telegram ghi các sự kiện chưa gửi do thiếu cấu hình.
 - **Cơ sở dữ liệu: migration 009 (trigger Telegram)** _(Cả hai)_ — Trigger trên bảng ca và phiếu dùng pg_net gọi máy chủ; bảng cấu hình riêng tư (private_config) chứa địa chỉ và mã bí mật, không ai đọc được qua app; pg_cron quét bù mỗi 5 phút.
 - **Cơ sở dữ liệu: migration 008 (Telegram)** _(Cả hai)_ — Thêm bảng cài đặt chung (app_settings) và nhật ký gửi Telegram (telegram_log). Token bot không lưu trong cơ sở dữ liệu mà ở biến môi trường TELEGRAM_BOT_TOKEN trên Vercel.
 - **Cơ sở dữ liệu: migration 007 (hiệu năng + bảo mật)** _(Cả hai)_ — Thêm chỉ mục cho các truy vấn thường dùng; viết lại chính sách phân quyền theo khuyến nghị hiệu năng của Supabase; người dùng không còn tự đổi được quyền, trạng thái làm việc hay tên đăng nhập của mình.

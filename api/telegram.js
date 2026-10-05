@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
     if (b.action === 'resend') {
       const { data: row } = await admin.from('telegram_log').select('event, ref_id, status').eq('id', b.log_id).single();
-      if (!row || row.status !== 'failed' || !EVENTS.includes(row.event)) return fail(res, 400, 'Không có tin lỗi nào để gửi lại');
+      if (!row || !['failed', 'skipped'].includes(row.status) || !EVENTS.includes(row.event)) return fail(res, 400, 'Không có tin nào để gửi lại');
       return res.json(await deliver(ctx, row.event, row.ref_id));
     }
 

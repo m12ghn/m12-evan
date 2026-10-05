@@ -10,13 +10,15 @@ export async function getSettings(admin) {
 }
 
 /** Gửi 1 sự kiện (idempotent: mỗi (sự kiện, id) chỉ gửi thành công 1 lần). */
-export async function deliver({ admin, token, uid, isManager }, event, id) {
-  if (!token) return { skipped: 'no_token' };
-  const settings = await getSettings(admin);
-  if (!settings.enabled) return { skipped: 'disabled' };
-  const chatId = settings[CHAT_KEY[event]] || settings.default_chat;
-  if (!chatId) return { skipped: 'no_chat' };
+/** Ghi lại lý do một sự kiện CHƯA được gửi (để quản lý thấy trong app thay vì im lặng). Mỗi (sự kiện, id) chỉ giữ 1 dòng. */
+async function logSkipped(admin, event, id, chatId, reason) {
+  const { data: old } = await admin.from('telegram_log').select('id').eq('event', event).eq('ref_id', id).eq('status', 'skipped').maybeSingle();
+  if (old) await admin.from('telegram_log').update({ at: new Date().toISOString(), error: reason, chat_id: chatId ? String(chatId) : null }).eq('id', old.id);
+  else await admin.from('telegram_log').insert({ event, ref_id: id, chat_id: chatId ? String(chatId) : null, status: 'skipped', error: reason });
+}
 
+/** Gửi 1 sự kiện (idempotent: mỗi (sự kiện, id) chỉ gửi thành công 1 lần). */
+export async function deliver({ admin, token, uid, isManager }, event, id) {
   // 1) Lấy dữ liệu từ DB (không tin nội dung do trình duyệt gửi lên)
   let trip, refuel;
   if (event === 'refuel') {
@@ -30,6 +32,13 @@ export async function deliver({ admin, token, uid, isManager }, event, id) {
   }
   const driverId = refuel ? refuel.driver_id : trip.driver_id;
   if (!isManager && driverId !== uid) return { forbidden: true };
+
+  // Kiểm tra cấu hình SAU khi xác nhận ca/phiếu có thật và đúng người (tránh ai đó tạo dòng nhật ký tùy ý)
+  const settings = await getSettings(admin);
+  const chatId = settings[CHAT_KEY[event]] || settings.default_chat;
+  if (!token) { await logSkipped(admin, event, id, chatId, 'Chưa có biến TELEGRAM_BOT_TOKEN trên Vercel (hoặc chưa Redeploy sau khi thêm).'); return { skipped: 'no_token' }; }
+  if (!settings.enabled) { await logSkipped(admin, event, id, chatId, 'Gửi tin Telegram đang tắt hoặc chưa lưu. Vào Cài đặt → Thông báo Telegram, tick Bật gửi tin rồi Lưu cài đặt.'); return { skipped: 'disabled' }; }
+  if (!chatId) { await logSkipped(admin, event, id, null, 'Chưa nhập Chat ID cho loại tin này (và chưa có Chat ID mặc định).'); return { skipped: 'no_chat' }; }
 
   const [{ data: vehicle }, { data: prof }] = await Promise.all([
     admin.from('vehicles').select('plate, energy_type').eq('id', trip.vehicle_id).maybeSingle(),
@@ -55,6 +64,7 @@ export async function deliver({ admin, token, uid, isManager }, event, id) {
     }))).filter(Boolean);
     const messageId = await sendToTelegram({ token, chatId, text, photos });
     await admin.from('telegram_log').update({ status: 'sent', message_id: messageId, error: null }).eq('id', slot.id);
+    await admin.from('telegram_log').delete().eq('event', event).eq('ref_id', id).eq('status', 'skipped'); // đã gửi được → xóa dòng chưa gửi cũ
     return { ok: true, photos: photos.length };
   } catch (e) {
     await admin.from('telegram_log').update({ status: 'failed', error: String(e.message).slice(0, 300) }).eq('id', slot.id);

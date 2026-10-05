@@ -18,7 +18,7 @@ create table if not exists public.telegram_log (
   event text not null,            -- checkin | refuel | checkout | test
   ref_id text,                    -- id ca / phiếu
   chat_id text,
-  status text not null check (status in ('pending','sent','failed')),
+  status text not null check (status in ('pending','sent','failed','skipped')),
   error text,
   message_id bigint
 );

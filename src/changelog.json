@@ -3,6 +3,18 @@
     "date": "2026-10-05",
     "items": [
       {
+        "type": "fix",
+        "scope": "manager",
+        "title": "Telegram: tin chưa gửi được giờ hiện rõ lý do thay vì im lặng",
+        "detail": "Khi chưa có token, chưa bật gửi tin hoặc chưa nhập Chat ID, bảng Tin gần đây ghi dòng Chưa gửi kèm lý do cụ thể và nút Gửi lại. Cấu hình xong chỉ cần bấm Gửi lại hoặc Quét và gửi bù."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 010 (trạng thái skipped của nhật ký Telegram)",
+        "detail": "Cho phép nhật ký Telegram ghi các sự kiện chưa gửi do thiếu cấu hình."
+      },
+      {
         "type": "change",
         "scope": "all",
         "title": "Telegram: database tự gửi tin ngay khi có dữ liệu mới",
