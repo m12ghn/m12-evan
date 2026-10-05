@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       return res.json(await deliver(ctx, row.event, row.ref_id));
     }
 
-    if (b.action === 'sweep') return res.json(await sweep(ctx, Number(b.hours) || 48));
+    if (b.action === 'sweep') return res.json(await sweep(ctx, Number(b.hours) || 2));
 
     return fail(res, 400, 'Hành động không hợp lệ');
   } catch (e) {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { telegramApi } from '../../lib/notify';
 
-interface Cfg { enabled: boolean; default_chat: string; checkin_chat: string; refuel_chat: string; checkout_chat: string }
+interface Cfg { enabled: boolean; default_chat: string; checkin_chat: string; refuel_chat: string; checkout_chat: string; since?: string }
 interface Log { id: number; at: string; event: string; chat_id: string | null; status: 'pending' | 'sent' | 'failed' | 'skipped'; error: string | null }
 interface Status { tokenConfigured: boolean; bot?: string; tokenError?: string }
 interface Hook { configured: boolean; url: string | null; pg_net: boolean; cron: boolean }
@@ -50,9 +50,19 @@ export default function TelegramSettings() {
   const allValid = [cfg.default_chat, cfg.checkin_chat, cfg.refuel_chat, cfg.checkout_chat].every(validChat);
 
   const save = () => wrap('save', async () => {
-    const { error: e } = await supabase.from('app_settings').upsert({ key: 'telegram', value: cfg, updated_at: new Date().toISOString() });
+    // Lần đầu bật (hoặc chưa có mốc) → chỉ gửi các tin phát sinh từ bây giờ, không gửi lại lịch sử
+    const value = { ...cfg, since: cfg.since && cfg.enabled ? cfg.since : new Date().toISOString() };
+    const { error: e } = await supabase.from('app_settings').upsert({ key: 'telegram', value, updated_at: new Date().toISOString() });
     if (e) throw e;
+    setCfg(value);
     return 'Đã lưu cài đặt Telegram';
+  });
+  const resetSince = () => wrap('since', async () => {
+    const value = { ...cfg, since: new Date().toISOString() };
+    const { error: e } = await supabase.from('app_settings').upsert({ key: 'telegram', value, updated_at: new Date().toISOString() });
+    if (e) throw e;
+    setCfg(value);
+    return 'Xong. Từ bây giờ chỉ gửi các tin mới; lịch sử cũ sẽ không bị gửi.';
   });
   const test = (chat: string) => wrap('test', async () => {
     if (!chat) throw new Error('Nhập Chat ID trước khi gửi thử');
@@ -62,12 +72,12 @@ export default function TelegramSettings() {
   const sweep = () => wrap('sweep', async () => {
     let ok = 0, failed = 0, remaining = 1;
     for (let i = 0; i < 12 && remaining > 0; i++) {
-      const r = await telegramApi<{ ok?: number; failed?: number; remaining?: number }>({ action: 'sweep', hours: 48 });
+      const r = await telegramApi<{ ok?: number; failed?: number; remaining?: number }>({ action: 'sweep', hours: 2 });
       ok += r.ok ?? 0; failed += r.failed ?? 0; remaining = r.remaining ?? 0;
       if (!r.ok && !r.failed) break;
     }
     await loadLogs();
-    return `Quét 48 giờ gần nhất: gửi bù ${ok} tin${failed ? `, lỗi ${failed}` : ''}${remaining ? `, còn ${remaining} chưa gửi (bấm lại)` : ''}.`;
+    return `Quét 2 giờ gần nhất: gửi bù ${ok} tin${failed ? `, lỗi ${failed}` : ''}${remaining ? `, còn ${remaining} chưa gửi (bấm lại)` : ''}.`;
   });
   const hookUrl = `${window.location.origin}/api/telegram-hook`;
   const genSecret = () => {
@@ -123,7 +133,8 @@ export default function TelegramSettings() {
 
       <div className="row" style={{ flexWrap: 'wrap' }}>
         <button className="btn" disabled={busy !== '' || !allValid} onClick={save}>{busy === 'save' ? 'Đang lưu…' : 'Lưu cài đặt'}</button>
-        <button className="btn ghost" disabled={busy !== ''} onClick={sweep}>{busy === 'sweep' ? 'Đang gửi bù…' : '↻ Quét & gửi bù (48 giờ qua)'}</button>
+        <button className="btn ghost" disabled={busy !== ''} onClick={sweep}>{busy === 'sweep' ? 'Đang gửi bù…' : '↻ Quét & gửi bù (2 giờ qua)'}</button>
+        <button className="btn ghost" disabled={busy !== ''} onClick={resetSince}>⏱ Chỉ gửi tin mới từ bây giờ</button>
       </div>
       {error && <p className="error">{error}</p>}{msg && <p style={{ color: 'var(--success)' }}>{msg}</p>}
 

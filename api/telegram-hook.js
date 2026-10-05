@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
   try {
     if (b.action === 'ping') return res.json({ ok: true });
-    if (b.action === 'sweep') return res.json(await sweep(ctx, 48));
+    if (b.action === 'sweep') return res.json(await sweep(ctx, 2));
     if (EVENTS.includes(b.event) && b.id) return res.json(await deliver(ctx, b.event, String(b.id)));
     return fail(res, 400, 'Yêu cầu không hợp lệ');
   } catch (e) {

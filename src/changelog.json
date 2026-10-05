@@ -3,6 +3,12 @@
     "date": "2026-10-05",
     "items": [
       {
+        "type": "fix",
+        "scope": "manager",
+        "title": "Telegram: không còn bắn lại lịch sử cũ",
+        "detail": "Quét gửi bù chỉ xét 2 giờ gần nhất và chỉ các sự kiện sau mốc 'chỉ gửi tin mới từ bây giờ' (tự đặt khi bật/lưu cài đặt; có nút đặt lại). Tin mới vẫn gửi tức thì qua trigger."
+      },
+      {
         "type": "new",
         "scope": "manager",
         "title": "Nút ⏹ Kết thúc ca trong tab Đội xe",

@@ -78,7 +78,9 @@ export async function sweep(ctx, hours) {
   const settings = await getSettings(admin);
   if (!ctx.token) return { error: 'Chưa cấu hình TELEGRAM_BOT_TOKEN trên Vercel' };
   if (!settings.enabled) return { error: 'Gửi tin Telegram đang tắt' };
-  const since = new Date(Date.now() - Math.min(hours, 168) * 3600_000).toISOString();
+  // Chỉ quét sự kiện trong cửa sổ ngắn VÀ sau mốc settings.since (mốc "chỉ gửi tin mới từ lúc này") → không bao giờ bắn lại lịch sử cũ
+  let since = new Date(Date.now() - Math.min(hours, 24) * 3600_000).toISOString();
+  if (settings.since && settings.since > since) since = settings.since;
 
   const [t1, t2, r] = await Promise.all([
     admin.from('trips').select('id').gte('start_time', since),
