@@ -4,6 +4,18 @@
     "items": [
       {
         "type": "fix",
+        "scope": "all",
+        "title": "Telegram: tăng thời gian chờ của database lên 40 giây",
+        "detail": "Gửi tin kèm ảnh có thể mất hơn 5 giây (tải ảnh, gửi album, máy chủ khởi động) nên database từng báo timeout dù máy chủ vẫn đang xử lý."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 011 (thời gian chờ pg_net)",
+        "detail": "Cập nhật hàm trigger và hàm quét bù Telegram."
+      },
+      {
+        "type": "fix",
         "scope": "manager",
         "title": "Telegram: tin chưa gửi được giờ hiện rõ lý do thay vì im lặng",
         "detail": "Khi chưa có token, chưa bật gửi tin hoặc chưa nhập Chat ID, bảng Tin gần đây ghi dòng Chưa gửi kèm lý do cụ thể và nút Gửi lại. Cấu hình xong chỉ cần bấm Gửi lại hoặc Quét và gửi bù."

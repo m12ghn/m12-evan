@@ -63,7 +63,7 @@ begin
       url := u,
       body := jsonb_build_object('event', ev, 'id', new.id),
       headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || s),
-      timeout_milliseconds := 5000
+      timeout_milliseconds := 40000
     );
   exception when others then
     null;
@@ -90,7 +90,7 @@ begin
   perform net.http_post(
     url := u, body := jsonb_build_object('action', 'sweep'),
     headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || s),
-    timeout_milliseconds := 5000
+    timeout_milliseconds := 40000
   );
 end $$;
 revoke all on function public.telegram_cron_sweep() from public;
