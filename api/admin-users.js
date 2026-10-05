@@ -20,8 +20,14 @@ export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const { data: caller } = await admin.auth.getUser(token);
   if (!caller?.user) return fail(res, 401, 'Chưa đăng nhập');
-  const { data: me } = await admin.from('profiles').select('role').eq('id', caller.user.id).single();
+  const { data: me } = await admin.from('profiles').select('role, full_name, email').eq('id', caller.user.id).single();
   if (me?.role !== 'manager') return fail(res, 403, 'Chỉ quản lý mới có quyền này');
+
+  // Nhật ký thao tác (lỗi ghi nhật ký không làm hỏng yêu cầu chính)
+  const log = (action, id, row, changes) => admin.from('audit_log').insert({
+    actor_id: caller.user.id, actor_name: me.full_name || me.email, action, table_name: 'profiles',
+    record_id: id, row_data: row ?? null, changes: changes ?? null,
+  }).then(() => {}, () => {});
 
   const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
 
@@ -42,11 +48,13 @@ export default async function handler(req, res) {
         await admin.auth.admin.deleteUser(data.user.id); // không để lại tài khoản dở dang
         return fail(res, 500, `Không lưu được hồ sơ (${pErr.message}). Đã chạy supabase/migration-002-profile-email.sql chưa?`);
       }
+      await log('create_user', data.user.id, { email, role, full_name: b.full_name || null });
       return res.json({ ok: true, id: data.user.id });
     }
 
     if (b.action === 'update') {
       if (!b.id) return fail(res, 400, 'Thiếu id người dùng');
+      const { data: prev } = await admin.from('profiles').select('email, full_name').eq('id', b.id).single();
       const patch = { email_confirm: true };
       if (b.username) {
         if (!validUser(b.username)) return fail(res, 400, 'Tên đăng nhập không hợp lệ (chữ, số, . _ -)');
@@ -63,6 +71,9 @@ export default async function handler(req, res) {
         const { error: pErr } = await admin.from('profiles').update({ email: patch.email }).eq('id', b.id);
         if (pErr) return fail(res, 500, `Đã đổi đăng nhập nhưng không lưu được hồ sơ (${pErr.message}). Chạy supabase/migration-002-profile-email.sql rồi thử lại.`);
       }
+      const who = { email: prev?.email ?? null, full_name: prev?.full_name ?? null };
+      if (patch.email) await log('change_username', b.id, who, { email: { old: prev?.email ?? null, new: patch.email } });
+      if (patch.password) await log('reset_password', b.id, who); // không bao giờ ghi mật khẩu
       return res.json({ ok: true });
     }
 
@@ -73,6 +84,7 @@ export default async function handler(req, res) {
         const { data: open } = await admin.from('trips').select('id').eq('driver_id', b.id).eq('status', 'on_duty').limit(1);
         if (open?.length) return fail(res, 400, 'Người này đang có ca chưa trả xe. Cần trả xe trước khi cho nghỉ việc.');
       }
+      const { data: prev } = await admin.from('profiles').select('email, full_name').eq('id', b.id).single();
       const { error: pErr } = await admin.from('profiles').update({ active: b.active }).eq('id', b.id);
       if (pErr) return fail(res, 500, `Không lưu được trạng thái (${pErr.message}). Đã chạy migration-005 chưa?`);
       // Khóa/mở khóa đăng nhập ở Supabase Auth (người đã nghỉ không đăng nhập hoặc làm mới phiên được nữa)
@@ -81,6 +93,7 @@ export default async function handler(req, res) {
         await admin.from('profiles').update({ active: !b.active }).eq('id', b.id); // hoàn tác
         return fail(res, 500, error.message);
       }
+      await log('set_active', b.id, { email: prev?.email ?? null, full_name: prev?.full_name ?? null }, { active: { old: !b.active, new: b.active } });
       return res.json({ ok: true });
     }
 

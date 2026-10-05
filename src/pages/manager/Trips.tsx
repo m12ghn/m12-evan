@@ -4,6 +4,7 @@ import type { Lookups } from '../../lib/useLookups';
 import SignedPhotos, { TRIP_LABELS } from '../../components/SignedPhotos';
 import type { PhotoMap } from '../../lib/storage';
 import { downloadXlsx, type Cell } from '../../lib/excel';
+import { dayAfter, dayStart, fetchAll, ymd } from '../../lib/dates';
 
 interface TripRow {
   id: string; vehicle_id: string; driver_id: string; status: 'on_duty' | 'completed';
@@ -16,20 +17,6 @@ interface TripRow {
 interface Fill { trip_id: string; quantity: number; total_amount: number }
 
 const fmt = (s: string) => new Date(s).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
-const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const dayStart = (s: string) => new Date(`${s}T00:00:00`).toISOString();
-const dayAfter = (s: string) => { const d = new Date(`${s}T00:00:00`); d.setDate(d.getDate() + 1); return d.toISOString(); };
-
-// Supabase giới hạn 1000 dòng/lần → tải theo trang
-async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: unknown[] | null }>): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; from < 10000; from += 1000) {
-    const { data } = await build(from, from + 999);
-    out.push(...((data ?? []) as T[]));
-    if (!data || data.length < 1000) break;
-  }
-  return out;
-}
 
 export default function Trips({ lk }: { lk: Lookups }) {
   const today = new Date();

@@ -7,8 +7,9 @@ import Trips from './manager/Trips';
 import Fuel from './manager/Fuel';
 import Settings from './manager/Settings';
 import Accidents from './manager/Accidents';
+import AuditLog from './manager/AuditLog';
 
-type Tab = 'fleet' | 'trips' | 'fuel' | 'accidents' | 'settings';
+type Tab = 'fleet' | 'trips' | 'fuel' | 'accidents' | 'audit' | 'settings';
 
 export default function ManagerHome() {
   const lk = useLookups();
@@ -24,7 +25,7 @@ export default function ManagerHome() {
   }, []);
   useEffect(() => { loadPending(); }, [loadPending]);
 
-  const tabs: [Tab, string][] = [['fleet', '🚚 Đội xe'], ['trips', '📋 Nhật ký ca'], ['fuel', '⛽ Duyệt nhiên liệu/điện'], ['accidents', '🚨 Tai nạn'], ['settings', '⚙️ Cài đặt']];
+  const tabs: [Tab, string][] = [['fleet', '🚚 Đội xe'], ['trips', '📋 Nhật ký ca'], ['fuel', '⛽ Duyệt nhiên liệu/điện'], ['accidents', '🚨 Tai nạn'], ['audit', '🧾 Nhật ký'], ['settings', '⚙️ Cài đặt']];
   return (
     <Shell title="Quản lý">
       <nav className="tabs">
@@ -39,6 +40,7 @@ export default function ManagerHome() {
       {tab === 'trips' && <Trips lk={lk} />}
       {tab === 'fuel' && <Fuel lk={lk} onChanged={loadPending} />}
       {tab === 'accidents' && <Accidents lk={lk} onChanged={loadPending} />}
+      {tab === 'audit' && <AuditLog lk={lk} />}
       {tab === 'settings' && <Settings lk={lk} />}
     </Shell>
   );

@@ -15,6 +15,7 @@ export default function Login() {
     setBusy(true); setError('');
     const { error } = await supabase.auth.signInWithPassword({ email: toEmail(account), password });
     if (error) setError(/banned/i.test(error.message) ? 'Tài khoản đã ngừng hoạt động (đã nghỉ việc). Vui lòng liên hệ quản lý.' : error.message);
+    else supabase.rpc('log_event', { p_action: 'login' }).then(() => {}, () => {});
     setBusy(false);
   }
 
