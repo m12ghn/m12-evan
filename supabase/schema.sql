@@ -93,6 +93,7 @@ create table public.refuels (
   station text,             -- trạm xăng / trạm sạc
   photo_pump text,          -- ảnh cột bơm / màn hình trạm sạc
   photo_receipt text,
+  photos jsonb,             -- {before, after, pump, receipt} = đường dẫn ảnh trong Storage
   status text not null default 'pending' check (status in ('pending','approved','rejected')),
   manager_note text
 );

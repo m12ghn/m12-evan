@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Lookups } from '../../lib/useLookups';
 import SignedPhotos from '../../components/SignedPhotos';
+import { refuelSlots } from '../../lib/types';
 
 interface Row {
   id: string; trip_id: string; driver_id: string; created_at: string; energy_type: 'fuel' | 'electric';
   fuel_type: string | null; odo_at_refuel: number; quantity: number; unit_price: number; total_amount: number;
-  station: string | null; photo_pump: string | null; photo_receipt: string | null;
+  station: string | null; photo_pump: string | null; photo_receipt: string | null; photos: Record<string, string> | null;
   status: 'pending' | 'approved' | 'rejected'; manager_note: string | null;
 }
 const money = (n: number) => Math.round(n).toLocaleString('vi-VN') + ' đ';
@@ -65,8 +66,8 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
             </p>
             <p className="muted">{new Date(r.created_at).toLocaleString('vi-VN')} · ODO {r.odo_at_refuel.toLocaleString()} km · {r.station || 'Chưa ghi trạm'} · {r.fuel_type}</p>
             <SignedPhotos
-              photos={{ pump: r.photo_pump ?? '', receipt: r.photo_receipt ?? '' }}
-              labels={{ pump: r.energy_type === 'electric' ? 'Màn hình trạm sạc' : 'Cột bơm', receipt: 'Hóa đơn' }} />
+              photos={r.photos ?? { pump: r.photo_pump ?? '', receipt: r.photo_receipt ?? '' }}
+              labels={Object.fromEntries(refuelSlots(r.energy_type))} />
             {r.status === 'pending' ? (
               <div className="row" style={{ flexWrap: 'wrap' }}>
                 <input placeholder="Ghi chú (bắt buộc nếu từ chối)" value={notes[r.id] ?? ''} onChange={e => setNotes({ ...notes, [r.id]: e.target.value })} style={{ flex: 1, minWidth: 200 }} />

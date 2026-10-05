@@ -49,3 +49,9 @@ export const energyLabels = (t: Vehicle['energy_type']) =>
   t === 'electric'
     ? { name: 'Điện', level: 'Mức pin', unit: 'kWh', rate: 'kWh/100km', fill: 'Cấp điện', station: 'Trạm sạc', pump: 'Ảnh màn hình trạm sạc' }
     : { name: 'Nhiên liệu', level: 'Mức nhiên liệu', unit: 'Lít', rate: 'L/100km', fill: 'Cấp nhiên liệu', station: 'Trạm xăng', pump: 'Ảnh đồng hồ cột bơm' };
+
+// Ảnh bắt buộc khi cấp nhiên liệu / cấp điện (khóa lưu trong refuels.photos)
+export const refuelSlots = (t: Vehicle['energy_type']): [string, string][] =>
+  t === 'electric'
+    ? [['before', 'Trước khi sạc'], ['after', 'Sau khi sạc'], ['receipt', 'Hóa đơn / lịch sử sạc']]
+    : [['before', 'Trước khi đổ'], ['after', 'Sau khi đổ'], ['pump', 'Đồng hồ trạm xăng'], ['receipt', 'Hình ảnh hóa đơn']];
