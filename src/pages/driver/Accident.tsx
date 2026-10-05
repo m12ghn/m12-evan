@@ -7,7 +7,7 @@ import type { Trip, Vehicle } from '../../lib/types';
 
 const MAX_PHOTOS = 6;
 const STATUS = { new: '🆕 Đã gửi', handling: '🛠️ Đang xử lý', done: '✓ Đã xử lý' } as const;
-interface Mine { id: string; created_at: string; location: string; status: keyof typeof STATUS }
+interface Mine { id: string; created_at: string; location: string; vehicle_id: string | null; status: keyof typeof STATUS }
 
 function Thumb({ blob, onRemove }: { blob: Blob; onRemove: () => void }) {
   const [url, setUrl] = useState('');
@@ -39,7 +39,7 @@ export default function Accident({ userId, trip, vehicle, onBack }: { userId: st
     if (d.photos) setPhotos(d.photos);
   });
 
-  const loadMine = () => supabase.from('accidents').select('id, created_at, location, status')
+  const loadMine = () => supabase.from('accidents').select('id, created_at, location, vehicle_id, status')
     .eq('driver_id', userId).order('created_at', { ascending: false }).limit(5).then(({ data }) => setMine((data as Mine[]) ?? []));
   useEffect(() => {
     supabase.from('vehicles').select('id, plate, type').order('plate').then(({ data }) => setVehicles((data as typeof vehicles) ?? []));
@@ -47,7 +47,7 @@ export default function Accident({ userId, trip, vehicle, onBack }: { userId: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const valid = location.trim() !== '' && description.trim() !== '';
+  const valid = vehicleId !== '' && location.trim() !== '' && description.trim() !== '';
 
   async function submit() {
     setBusy(true); setError(''); setSent(false);
@@ -55,7 +55,7 @@ export default function Accident({ userId, trip, vehicle, onBack }: { userId: st
       const paths: string[] = [];
       for (const b of photos) paths.push(await uploadPhoto(userId, 'accident', b));
       const { error: e } = await supabase.from('accidents').insert({
-        driver_id: userId, vehicle_id: vehicleId || null, trip_id: trip?.id ?? null,
+        driver_id: userId, vehicle_id: vehicleId, trip_id: trip?.id ?? null,
         location: location.trim(), description: description.trim(), photos: paths,
       });
       if (e) throw e;
@@ -71,10 +71,12 @@ export default function Accident({ userId, trip, vehicle, onBack }: { userId: st
       <h3>🚨 Báo cáo tai nạn</h3>
       <p className="muted">Không cần chụp hình vào ca. Điền thông tin và gửi ngay để quản lý xử lý.</p>
 
-      <label>Xe liên quan
+      <label>Xe bị tai nạn <span className="error">*</span>
         <select value={vehicleId} onChange={e => setVehicleId(e.target.value)}>
-          <option value="">-- Không chọn --</option>
-          {vehicles.map(v => <option key={v.id} value={v.id}>{v.plate}{v.type ? ` • ${v.type}` : ''}</option>)}
+          <option value="">-- Chọn xe bị tai nạn --</option>
+          {[...vehicles].sort((a, b) => Number(b.id === vehicle?.id) - Number(a.id === vehicle?.id)).map(v => (
+            <option key={v.id} value={v.id}>{v.plate}{v.type ? ` • ${v.type}` : ''}{v.id === vehicle?.id ? ' (xe đang chạy)' : ''}</option>
+          ))}
         </select></label>
       <label>Vị trí / Địa điểm xảy ra tai nạn
         <input placeholder="Địa chỉ hoặc khu vực, ví dụ: QL1A, Km 12, Bình Dương" value={location} onChange={e => setLocation(e.target.value)} /></label>
@@ -103,7 +105,7 @@ export default function Accident({ userId, trip, vehicle, onBack }: { userId: st
           <h3>Báo cáo gần đây</h3>
           {mine.map(r => (
             <div key={r.id} className="row between">
-              <span>{new Date(r.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })} · {r.location}</span>
+              <span>{new Date(r.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })} · {vehicles.find(v => v.id === r.vehicle_id)?.plate ?? 'Chưa chọn xe'} · {r.location}</span>
               <span className="chip">{STATUS[r.status]}</span>
             </div>
           ))}

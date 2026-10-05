@@ -15,6 +15,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🔧 Chỉnh sửa
 
+- **Báo cáo tai nạn: bắt buộc chọn "Xe bị tai nạn"** _(Tài xế)_ — Đổi ô "Xe liên quan" (tùy chọn) thành "Xe bị tai nạn" (bắt buộc). Xe đang chạy được đưa lên đầu danh sách và chọn sẵn. Lịch sử báo cáo của tài xế hiện thêm biển số xe.
 - **Cấp điện: thay các ô nhập cũ bằng 6 ô mới** _(Tài xế)_ — ĐỒNG HỒ ODO, PIN TRƯỚC KHI SẠC (0–100%), PIN SAU KHI SẠC (0–100%), KWH (có số thập phân), THỜI GIAN SẠC (phút), THÀNH TIỀN (VND, tự hiện dạng 214,000). Phiếu cũ giữ nguyên. Trang quản lý hiển thị pin trước → sau, kWh, phút sạc, thành tiền. `9b57273`
 
 ### 🐞 Sửa lỗi
