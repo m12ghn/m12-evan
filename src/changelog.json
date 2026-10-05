@@ -3,6 +3,18 @@
     "date": "2026-10-05",
     "items": [
       {
+        "type": "new",
+        "scope": "manager",
+        "title": "Nút ⏹ Kết thúc ca trong tab Đội xe",
+        "detail": "Quản lý đóng ca thay tài xế (vd. quên trả xe): mỗi xe đang vận hành hiện giờ nhận ca và số giờ đã chạy (cảnh báo từ 12 giờ). Bấm Kết thúc ca, nhập ODO cuối, mức nhiên liệu/pin, tình trạng xe sau ca (Sẵn sàng, Bảo dưỡng, Đang sửa chữa tai nạn, Ngưng hoạt động) và lý do bắt buộc. Ca được đánh dấu Quản lý đóng ca, ghi vào nhật ký thao tác, có tin kết thúc ca trên Telegram."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 012 (quản lý đóng ca)",
+        "detail": "Hàm manager_close_trip chạy trọn gói: kiểm tra hợp lệ, tính quãng đường và tiêu hao, cập nhật ca và xe cùng lúc; thêm cột trips.closed_by."
+      },
+      {
         "type": "fix",
         "scope": "all",
         "title": "Telegram: tăng thời gian chờ của database lên 40 giây",

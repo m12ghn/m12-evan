@@ -11,7 +11,7 @@ interface TripRow {
   start_time: string; end_time: string | null; start_odo: number; end_odo: number | null;
   start_level: number; end_level: number | null; km_driven: number | null;
   energy_consumed: number | null; energy_rate: number | null;
-  pre_notes: string | null; has_damage: boolean; damage_notes: string | null;
+  pre_notes: string | null; post_notes: string | null; closed_by: string | null; has_damage: boolean; damage_notes: string | null;
   photos_start: PhotoMap | null; photos_end: PhotoMap | null;
 }
 interface Fill { trip_id: string; quantity: number; total_amount: number }
@@ -72,7 +72,7 @@ export default function Trips({ lk }: { lk: Lookups }) {
     const unit = (id: string) => (lk.vehicle(id)?.energy_type === 'electric' ? 'kWh' : 'L');
     const detail: Cell[][] = [[
       'Ngày', 'Giờ nhận xe', 'Giờ trả xe', 'Biển số', 'Loại xe', 'Năng lượng', 'Tài xế', 'ODO đầu', 'ODO cuối', 'Quãng đường (km)',
-      'Mức đầu (%)', 'Mức cuối (%)', 'Tiêu hao', 'Đơn vị', 'Định mức /100km', 'Thực tế /100km', 'Vượt định mức', 'Đã cấp (lít/kWh)', 'Tiền cấp (đ)', 'Trạng thái ca', 'Sự cố', 'Mô tả sự cố',
+      'Mức đầu (%)', 'Mức cuối (%)', 'Tiêu hao', 'Đơn vị', 'Định mức /100km', 'Thực tế /100km', 'Vượt định mức', 'Đã cấp (lít/kWh)', 'Tiền cấp (đ)', 'Trạng thái ca', 'Quản lý đóng ca', 'Sự cố', 'Mô tả sự cố',
     ]];
     const hm = (s: string | null) => (s ? new Date(s).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '');
     const sum = new Map<string, { plate: string; type: string; trips: number; km: number; used: number; qty: number; money: number; unit: string }>();
@@ -82,7 +82,7 @@ export default function Trips({ lk }: { lk: Lookups }) {
         new Date(t.start_time).toLocaleDateString('vi-VN'), hm(t.start_time), hm(t.end_time), lk.plate(t.vehicle_id), v?.type ?? '',
         v?.energy_type === 'electric' ? 'Điện' : v?.fuel_type ?? '', lk.person(t.driver_id), t.start_odo, t.end_odo, t.km_driven,
         t.start_level, t.end_level, t.energy_consumed, unit(t.vehicle_id), v?.std_rate ?? null, t.energy_rate, isOver(t) ? 'Có' : '',
-        f?.qty ?? 0, f?.money ?? 0, t.status === 'completed' ? 'Hoàn tất' : 'Đang chạy', t.has_damage ? 'Có' : '', t.damage_notes,
+        f?.qty ?? 0, f?.money ?? 0, t.status === 'completed' ? 'Hoàn tất' : 'Đang chạy', t.closed_by ? 'Có' : '', t.has_damage ? 'Có' : '', t.damage_notes,
       ]);
       const s = sum.get(t.vehicle_id) ?? { plate: lk.plate(t.vehicle_id), type: v?.type ?? '', trips: 0, km: 0, used: 0, qty: 0, money: 0, unit: unit(t.vehicle_id) };
       s.trips++; s.km += t.km_driven ?? 0; s.used += t.energy_consumed ?? 0; s.qty += f?.qty ?? 0; s.money += f?.money ?? 0; sum.set(t.vehicle_id, s);
@@ -91,7 +91,7 @@ export default function Trips({ lk }: { lk: Lookups }) {
     [...sum.values()].sort((a, b) => a.plate.localeCompare(b.plate)).forEach(s =>
       summary.push([s.plate, s.type, s.trips, s.km, Number(s.used.toFixed(1)), s.unit, s.km ? Number(((s.used / s.km) * 100).toFixed(1)) : null, Number(s.qty.toFixed(1)), Math.round(s.money)]));
     await downloadXlsx(`nhat-ky-ca_${from}_${to}.xlsx`, [
-      { name: 'Chi tiết ca', rows: detail, widths: [11, 10, 10, 13, 26, 16, 20, 10, 10, 12, 10, 10, 10, 7, 12, 12, 11, 14, 13, 11, 8, 30] },
+      { name: 'Chi tiết ca', rows: detail, widths: [11, 10, 10, 13, 26, 16, 20, 10, 10, 12, 10, 10, 10, 7, 12, 12, 11, 14, 13, 11, 14, 8, 30] },
       { name: 'Tổng hợp theo xe', rows: summary, widths: [13, 26, 8, 10, 12, 7, 10, 12, 16] },
     ]);
   }
@@ -131,12 +131,13 @@ export default function Trips({ lk }: { lk: Lookups }) {
                     <td>{t.start_odo.toLocaleString()} → {t.end_odo?.toLocaleString() ?? '…'}</td>
                     <td>{t.status === 'on_duty' ? <><span className="chip on_duty">Đang chạy</span>{Date.now() - Date.parse(t.start_time) > 12 * 3600_000 && <><br /><small className="error">⏰ Quá 12 giờ chưa trả xe</small></>}</> : `${t.km_driven?.toLocaleString()} km`}</td>
                     <td className={high ? 'error' : ''}>{t.energy_rate != null ? `${t.energy_rate} ${unit}/100km${high ? ' ⚠️' : ''}` : '—'}</td>
-                    <td>{t.has_damage ? <span className="chip maintenance">Có sự cố</span> : t.status === 'completed' ? '✓ Nguyên vẹn' : '—'}</td>
+                    <td>{t.closed_by && <><span className="chip">Quản lý đóng ca</span><br /></>}{t.has_damage ? <span className="chip maintenance">Có sự cố</span> : t.status === 'completed' ? '✓ Nguyên vẹn' : '—'}</td>
                     <td><button className="btn ghost" onClick={() => setOpen(open === t.id ? '' : t.id)}>{open === t.id ? 'Đóng' : 'Chi tiết'}</button></td>
                   </tr>
                   {open === t.id && (
                     <tr><td colSpan={8}>
                       {t.pre_notes && <p><b>Ghi chú nhận xe:</b> {t.pre_notes}</p>}
+                      {t.post_notes && <p><b>Ghi chú cuối ca:</b> {t.post_notes}</p>}
                       {t.damage_notes && <p className="error"><b>Sự cố cuối ca:</b> {t.damage_notes}</p>}
                       <h4>Ảnh đầu ca</h4><SignedPhotos photos={t.photos_start} labels={TRIP_LABELS} />
                       <h4>Ảnh cuối ca</h4><SignedPhotos photos={t.photos_end} labels={TRIP_LABELS} />

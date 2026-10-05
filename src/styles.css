@@ -113,3 +113,5 @@ button.photo { background: none; font: inherit; width: 100%; }
 /* Hàng ô nhập + nút: ô nhập co lại được, nút không bị bóp hay bị đè */
 .row > input, .row > select { min-width: 0; }
 .row > button { flex-shrink: 0; white-space: nowrap; }
+.sheet-backdrop.modal { align-items: center; padding: 16px; }
+.modal-box { max-width: 480px; border-radius: 16px; max-height: 92vh; overflow-y: auto; }

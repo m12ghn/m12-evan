@@ -6,6 +6,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### ✨ Tính năng mới
 
+- **Nút ⏹ Kết thúc ca trong tab Đội xe** _(Quản lý)_ — Quản lý đóng ca thay tài xế (vd. quên trả xe): mỗi xe đang vận hành hiện giờ nhận ca và số giờ đã chạy (cảnh báo từ 12 giờ). Bấm Kết thúc ca, nhập ODO cuối, mức nhiên liệu/pin, tình trạng xe sau ca (Sẵn sàng, Bảo dưỡng, Đang sửa chữa tai nạn, Ngưng hoạt động) và lý do bắt buộc. Ca được đánh dấu Quản lý đóng ca, ghi vào nhật ký thao tác, có tin kết thúc ca trên Telegram.
 - **Thông báo Telegram: vào ca, sạc điện, kết thúc ca** _(Cả hai)_ — Khi tài xế vào ca, gửi phiếu sạc điện / đổ nhiên liệu, hoặc kết thúc ca, bot tự gửi tin theo mẫu GHN (HỌ TÊN, BKS, ĐỒNG HỒ ODO, % pin, giờ vào/kết thúc ca, kWh, thời gian sạc…) kèm các ảnh đã chụp vào nhóm Telegram. Quản lý cài Chat ID, gửi tin thử, xem nhật ký gửi, gửi lại tin lỗi và quét gửi bù ở Cài đặt → Thông báo Telegram. Mỗi sự kiện chỉ gửi một lần.
 - **Nhật ký cập nhật app (tab 📝 Cập nhật)** _(Quản lý)_ — Xem app đã được điều chỉnh gì theo từng ngày: thêm tính năng, chỉnh nút, sửa lỗi… Có lọc theo loại và ô tìm kiếm. Cũng có file CHANGELOG.md trong repo.
 - **Nhật ký thao tác (tab 🧾 Nhật ký)** _(Quản lý)_ — Tự ghi lại mọi thêm/sửa/xóa dữ liệu (kèm giá trị cũ → mới), đăng nhập/đăng xuất, tạo tài khoản, đổi tên đăng nhập, đổi mật khẩu, cho nghỉ việc. Lọc theo ngày/người/đối tượng/hành động, tải Excel. Không ai sửa hoặc xóa được nhật ký. `119c990`
@@ -36,6 +37,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### ⚙️ Hệ thống
 
+- **Cơ sở dữ liệu: migration 012 (quản lý đóng ca)** _(Cả hai)_ — Hàm manager_close_trip chạy trọn gói: kiểm tra hợp lệ, tính quãng đường và tiêu hao, cập nhật ca và xe cùng lúc; thêm cột trips.closed_by.
 - **Cơ sở dữ liệu: migration 011 (thời gian chờ pg_net)** _(Cả hai)_ — Cập nhật hàm trigger và hàm quét bù Telegram.
 - **Cơ sở dữ liệu: migration 010 (trạng thái skipped của nhật ký Telegram)** _(Cả hai)_ — Cho phép nhật ký Telegram ghi các sự kiện chưa gửi do thiếu cấu hình.
 - **Cơ sở dữ liệu: migration 009 (trigger Telegram)** _(Cả hai)_ — Trigger trên bảng ca và phiếu dùng pg_net gọi máy chủ; bảng cấu hình riêng tư (private_config) chứa địa chỉ và mã bí mật, không ai đọc được qua app; pg_cron quét bù mỗi 5 phút.
