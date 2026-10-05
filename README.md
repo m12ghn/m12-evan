@@ -35,3 +35,6 @@ supabase/    schema.sql (bảng + RLS + storage), seed.sql
 ## Quy ước (bắt chước gxt-driver-truck)
 - **Màu/giao diện**: teal GHN `#0F9B94`, font Roboto, bo góc 12, nút gradient; trang tài xế giới hạn 480px. Biến CSS ở đầu `src/styles.css`.
 - **Lưu ảnh**: file trên Supabase Storage (bucket `photos`, tối đa 5MB), DB chỉ lưu đường dẫn trong cột jsonb (`photos_start`, `photos_end`), đọc lại bằng signed URL 7 ngày (`src/lib/storage.ts`).
+
+## Nhật ký cập nhật
+Các điều chỉnh của app được ghi theo ngày trong `src/changelog.json` → `CHANGELOG.md` (chạy `npm run changelog`). Trong app: Quản lý → tab 📝 Cập nhật.

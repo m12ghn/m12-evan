@@ -1,0 +1,42 @@
+[
+  {
+    "date": "2026-10-05",
+    "items": [
+      { "type": "new", "scope": "manager", "title": "Nhật ký cập nhật app (tab 📝 Cập nhật)", "detail": "Xem app đã được điều chỉnh gì theo từng ngày: thêm tính năng, chỉnh nút, sửa lỗi… Có lọc theo loại và ô tìm kiếm. Cũng có file CHANGELOG.md trong repo." },
+      { "type": "new", "scope": "manager", "title": "Nhật ký thao tác (tab 🧾 Nhật ký)", "detail": "Tự ghi lại mọi thêm/sửa/xóa dữ liệu (kèm giá trị cũ → mới), đăng nhập/đăng xuất, tạo tài khoản, đổi tên đăng nhập, đổi mật khẩu, cho nghỉ việc. Lọc theo ngày/người/đối tượng/hành động, tải Excel. Không ai sửa hoặc xóa được nhật ký.", "commit": "119c990" },
+      { "type": "new", "scope": "driver", "title": "Mục 🚨 Báo cáo tai nạn", "detail": "Dùng được cả khi chưa vào ca. Nhập địa điểm, mô tả, chọn xe liên quan; ảnh tối đa 6 (chụp hoặc chọn từ máy, xóa được từng ảnh). Quản lý có tab 🚨 Tai nạn để xem ảnh, đổi trạng thái, ghi chú, chuyển xe sang đang sửa chữa.", "commit": "9b57273" },
+      { "type": "change", "scope": "driver", "title": "Cấp điện: thay các ô nhập cũ bằng 6 ô mới", "detail": "ĐỒNG HỒ ODO, PIN TRƯỚC KHI SẠC (0–100%), PIN SAU KHI SẠC (0–100%), KWH (có số thập phân), THỜI GIAN SẠC (phút), THÀNH TIỀN (VND, tự hiện dạng 214,000). Phiếu cũ giữ nguyên. Trang quản lý hiển thị pin trước → sau, kWh, phút sạc, thành tiền.", "commit": "9b57273" },
+      { "type": "new", "scope": "manager", "title": "Người dùng có trạng thái Còn làm / Đã nghỉ", "detail": "Nút \"Cho nghỉ việc\" / \"Cho đi làm lại\" trong Cài đặt. Người đã nghỉ bị khóa đăng nhập. Không cho nghỉ việc người đang có ca chưa trả xe.", "commit": "9b57273" },
+      { "type": "new", "scope": "manager", "title": "Thêm 2 trạng thái xe: Ngưng hoạt động, Đang sửa chữa tai nạn", "detail": "Có trong bộ lọc Đội xe, form sửa xe và file Excel thêm xe. Xe ở hai trạng thái này tài xế không nhận được.", "commit": "9b57273" },
+      { "type": "new", "scope": "driver", "title": "Cấp nhiên liệu/điện: nhiều ảnh theo loại xe + chọn ảnh từ máy", "detail": "Xe xăng/dầu 4 ảnh (trước khi đổ, sau khi đổ, đồng hồ trạm xăng, hóa đơn). Xe điện 3 ảnh (trước khi sạc, sau khi sạc, hóa đơn/lịch sử sạc). Mỗi ô ảnh cho chọn Chụp ảnh hoặc Chọn từ máy (vd. ảnh chụp màn hình). Trang quản lý xem đủ ảnh.", "commit": "42b0c2a" },
+      { "type": "fix", "scope": "all", "title": "Mở ảnh ở tab mới không làm tab gốc bị tải lại", "detail": "Trước đây quay lại tab gốc thì trang quản lý bị dựng lại, mất bộ lọc và chi tiết đang mở.", "commit": "4a90d9c" },
+      { "type": "system", "scope": "all", "title": "Cập nhật cơ sở dữ liệu: migration 004, 005, 006", "detail": "004: nhiều ảnh cho phiếu nhiên liệu/điện. 005: phiếu sạc điện, trạng thái nghỉ việc, trạng thái xe mới, bảng báo cáo tai nạn. 006: nhật ký thao tác." }
+    ]
+  },
+  {
+    "date": "2026-10-01",
+    "items": [
+      { "type": "fix", "scope": "driver", "title": "Sửa lỗi kết thúc ca báo \"violates row-level security\"", "detail": "Nhận xe và trả xe giờ chạy trọn gói trong cơ sở dữ liệu (kiểm tra hợp lệ, tính tiêu hao, cập nhật xe cùng lúc). Tài xế không còn sửa trực tiếp bảng xe và bảng ca.", "commit": "82c403a" },
+      { "type": "fix", "scope": "driver", "title": "Sửa crash trên Android khi chụp hình", "detail": "Chụp ảnh ngay trong trang (không mở app camera ngoài nữa), lưu nháp tự động kể cả ảnh, nhớ màn hình đang mở, nén ảnh nhẹ RAM hơn. Máy không hỗ trợ thì tự dùng camera của máy.", "commit": "4ed8fe6" },
+      { "type": "new", "scope": "manager", "title": "Trang quản lý: Đội xe, Nhật ký ca, Duyệt nhiên liệu/điện, Cài đặt", "detail": "Đội xe có KPI, tìm kiếm, lọc trạng thái. Nhật ký ca xem ảnh đầu/cuối ca, cảnh báo vượt định mức. Duyệt/từ chối phiếu kèm ghi chú. Cài đặt thêm/sửa xe và hồ sơ người dùng.", "commit": "308a5c9" },
+      { "type": "new", "scope": "all", "title": "Tự đăng xuất sau 3 ngày", "detail": "Bắt đăng nhập lại sau 3 ngày kể từ lần đăng nhập gần nhất (kiểm tra khi mở lại tab và mỗi 10 phút).", "commit": "0649416" },
+      { "type": "new", "scope": "all", "title": "Logo GHN", "detail": "Hiện ở màn hình đăng nhập, thanh đầu trang và biểu tượng tab trình duyệt.", "commit": "85b8801" },
+      { "type": "new", "scope": "manager", "title": "Đổi tên đăng nhập, mật khẩu và tạo người dùng ngay trên web", "detail": "Nút \"Đổi TK / MK\" và \"+ Thêm người dùng\" trong Cài đặt. Chạy qua hàm server (Vercel Function) vì cần khóa quản trị.", "commit": "85b8801" },
+      { "type": "new", "scope": "manager", "title": "Thêm xe hàng loạt bằng Excel", "detail": "Tải file mẫu, điền rồi tải lên. Hiện xem trước và lỗi theo từng dòng. Biển số đã có thì chỉ cập nhật thông tin xe.", "commit": "85b8801" },
+      { "type": "new", "scope": "manager", "title": "Nhật ký ca: bộ lọc và tải Excel", "detail": "Lọc theo ngày, loại xe, xăng/dầu hoặc điện, tài xế, trạng thái, chỉ ca có sự cố, chỉ ca vượt định mức. Tải Excel gồm chi tiết ca và tổng hợp theo xe.", "commit": "85b8801" },
+      { "type": "change", "scope": "driver", "title": "Báo lỗi rõ khi không tải được ca hoặc xe", "detail": "Thêm dòng hướng dẫn khi chưa có ca đang chạy; chặn mở ca mới khi còn ca chưa trả xe.", "commit": "0094f92" },
+      { "type": "fix", "scope": "manager", "title": "Tạo/đổi tài khoản báo lỗi rõ và hoàn tác khi thất bại", "detail": "Không để lại tài khoản dở dang khi không lưu được hồ sơ.", "commit": "ad0545e" }
+    ]
+  },
+  {
+    "date": "2026-09-30",
+    "items": [
+      { "type": "new", "scope": "all", "title": "Khởi tạo app từ bản prototype FleetOps", "detail": "Một đường link duy nhất, đăng nhập xong tự vào trang Quản lý hoặc trang Tài xế theo quyền. Kết nối Supabase + Vercel + GitHub.", "commit": "f1e7ad5" },
+      { "type": "new", "scope": "driver", "title": "Trang tài xế với 3 chức năng", "detail": "Chụp hình đầu ca (ODO, mức nhiên liệu/pin, 5 ảnh), Cấp nhiên liệu / Cấp điện (một phiếu chung cho xe xăng/dầu và xe điện), Chụp hình cuối ca (ODO cuối, 5 ảnh, tình trạng xe, tự tính tiêu hao).", "commit": "b406179" },
+      { "type": "change", "scope": "all", "title": "Giao diện theo bảng màu GHN", "detail": "Màu teal GHN, font Roboto, bo góc 12, nút gradient; trang tài xế giới hạn 480px. Ảnh lưu trên Supabase Storage, đọc lại bằng đường dẫn có hạn 7 ngày.", "commit": "0e4f342" },
+      { "type": "change", "scope": "all", "title": "Đăng nhập bằng MSNV", "detail": "Tài xế gõ MSNV (tự đổi thành email nội bộ). Quản lý có thể dùng email.", "commit": "d16eb76" },
+      { "type": "change", "scope": "all", "title": "Cấu hình dùng SUPABASE_URL / SUPABASE_ANON_KEY", "detail": "Không cần tiền tố VITE_ khi khai báo trên Vercel.", "commit": "d616c2e" },
+      { "type": "system", "scope": "all", "title": "Thiết lập cơ sở dữ liệu và tài khoản thử", "detail": "File setup-all.sql tạo bảng, phân quyền, xe mẫu và 2 tài khoản thử (admin, tài xế). Sửa lỗi không đặt được quyền từ SQL Editor.", "commit": "a593cb3" }
+    ]
+  }
+]
