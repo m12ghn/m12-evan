@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { uploadPhotos } from '../../lib/storage';
 import { energyLabels, type Trip, type Vehicle } from '../../lib/types';
 import { useDraft } from '../../lib/draft';
+import { notifyTelegram } from '../../lib/notify';
 import { onlyDigits } from '../../lib/numbers';
 import PhotoSet, { photosComplete, type Photos } from './PhotoSet';
 
@@ -43,6 +44,7 @@ export default function CheckOut({ userId, trip, vehicle, onDone, onBack }:
       });
       // Gửi lại sau khi mất mạng mà lần trước đã thành công → ca đã đóng
       if (e && !/Không tìm thấy ca đang chạy/.test(e.message)) throw e;
+      notifyTelegram('checkout', trip.id);
       await draft.clear();
       onDone();
     } catch (e) { setError((e as Error).message); setBusy(false); }

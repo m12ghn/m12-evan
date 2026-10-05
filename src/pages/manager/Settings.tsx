@@ -5,6 +5,7 @@ import { VEHICLE_STATUS, type Vehicle, type VehicleStatus } from '../../lib/type
 import { adminUsers, usernameOf } from '../../lib/adminApi';
 import BulkVehicles from './BulkVehicles';
 import { useAuth } from '../../lib/auth';
+import TelegramSettings from './TelegramSettings';
 
 const empty = { plate: '', type: '', energy_type: 'fuel', capacity: 70, std_rate: 11, fuel_type: 'Dầu Diesel (DO)', odo: 0, energy_level: 50, status: 'ready' };
 type Form = typeof empty & { id?: string };
@@ -69,6 +70,8 @@ export default function Settings({ lk }: { lk: Lookups }) {
           ))}
         </tbody></table>
       </div>
+
+      <TelegramSettings />
 
       <UsersSection lk={lk} savePerson={savePerson} />
     </div>

@@ -110,3 +110,6 @@ button.photo { background: none; font: inherit; width: 100%; }
 .day-head { margin: 0 0 6px; padding: 8px 12px; background: var(--teal-soft); border-radius: 10px; color: var(--teal-dark); text-transform: capitalize; }
 .day-head .muted { text-transform: none; font-weight: 400; }
 .change-item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+/* Hàng ô nhập + nút: ô nhập co lại được, nút không bị bóp hay bị đè */
+.row > input, .row > select { min-width: 0; }
+.row > button { flex-shrink: 0; white-space: nowrap; }

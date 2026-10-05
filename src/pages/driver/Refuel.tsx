@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { uploadPhotos } from '../../lib/storage';
 import { energyLabels, refuelSlots, type Refuel as RefuelRow, type Trip, type Vehicle } from '../../lib/types';
 import { useDraft } from '../../lib/draft';
+import { notifyTelegram } from '../../lib/notify';
 import { clampPercent, cleanDecimal, fmtThousands, onlyDigits } from '../../lib/numbers';
 import PhotoInput from '../../components/PhotoInput';
 
@@ -75,6 +76,7 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
         : { ...base, quantity: Number(qty), unit_price: Number(price), total_amount: Math.round(fuelTotal), station: station || null };
       const { error: e } = await supabase.from('refuels').insert(row);
       if (e && e.code !== '23505') throw e; // 23505 = phiếu này đã được ghi từ lần gửi trước
+      notifyTelegram('refuel', rid.current);
       rid.current = crypto.randomUUID();
       setQty(''); setStation(''); setBatBefore(''); setBatAfter(''); setKwh(''); setMinutes(''); setAmount(''); setPhotos({});
       await draft.clear();

@@ -3,6 +3,18 @@
     "date": "2026-10-05",
     "items": [
       {
+        "type": "new",
+        "scope": "all",
+        "title": "Thông báo Telegram: vào ca, sạc điện, kết thúc ca",
+        "detail": "Khi tài xế vào ca, gửi phiếu sạc điện / đổ nhiên liệu, hoặc kết thúc ca, bot tự gửi tin theo mẫu GHN (HỌ TÊN, BKS, ĐỒNG HỒ ODO, % pin, giờ vào/kết thúc ca, kWh, thời gian sạc…) kèm các ảnh đã chụp vào nhóm Telegram. Quản lý cài Chat ID, gửi tin thử, xem nhật ký gửi, gửi lại tin lỗi và quét gửi bù ở Cài đặt → Thông báo Telegram. Mỗi sự kiện chỉ gửi một lần."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 008 (Telegram)",
+        "detail": "Thêm bảng cài đặt chung (app_settings) và nhật ký gửi Telegram (telegram_log). Token bot không lưu trong cơ sở dữ liệu mà ở biến môi trường TELEGRAM_BOT_TOKEN trên Vercel."
+      },
+      {
         "type": "change",
         "scope": "driver",
         "title": "Tải ảnh nhanh và chắc hơn trên mạng yếu",

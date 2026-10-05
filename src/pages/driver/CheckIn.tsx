@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { uploadPhotos } from '../../lib/storage';
 import { energyLabels, type Vehicle } from '../../lib/types';
 import { useDraft } from '../../lib/draft';
+import { notifyTelegram } from '../../lib/notify';
 import { onlyDigits } from '../../lib/numbers';
 import PhotoSet, { photosComplete, type Photos } from './PhotoSet';
 
@@ -47,11 +48,12 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
     try {
       const paths = await uploadPhotos(userId, 'checkin', Object.entries(photos) as [string, Blob][], (d, t) => setProgress(`Đang tải ảnh ${d}/${t}…`));
       setProgress('Đang gửi…');
-      const { error: e } = await supabase.rpc('start_trip', {
+      const { data: tripId, error: e } = await supabase.rpc('start_trip', {
         p_vehicle: v.id, p_odo: Number(odo), p_level: level, p_notes: notes, p_photos: paths,
       });
       // Gửi lại sau khi mất mạng mà lần trước đã thành công → ca đã mở, chỉ cần làm mới màn hình
       if (e && !/đang có ca chưa trả xe/.test(e.message)) throw e;
+      if (!e && tripId) notifyTelegram('checkin', String(tripId));
       await draft.clear();
       onDone();
     } catch (e) { setError((e as Error).message); setBusy(false); }

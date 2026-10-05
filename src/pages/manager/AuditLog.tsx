@@ -12,7 +12,7 @@ interface Row {
 }
 
 const TABLE: Record<string, string> = {
-  vehicles: 'Xe', trips: 'Ca vận hành', refuels: 'Phiếu nhiên liệu/điện', accidents: 'Tai nạn', profiles: 'Người dùng', auth: 'Phiên đăng nhập',
+  vehicles: 'Xe', trips: 'Ca vận hành', refuels: 'Phiếu nhiên liệu/điện', accidents: 'Tai nạn', profiles: 'Người dùng', app_settings: 'Cài đặt', auth: 'Phiên đăng nhập',
 };
 const ACTION: Record<string, string> = {
   insert: 'Thêm mới', update: 'Cập nhật', delete: 'Xóa', login: 'Đăng nhập', logout: 'Đăng xuất',
@@ -26,7 +26,7 @@ const FIELD: Record<string, string> = {
   quantity: 'Số lượng', unit_price: 'Đơn giá', total_amount: 'Thành tiền', manager_note: 'Ghi chú quản lý', station: 'Trạm',
   battery_before: 'Pin trước (%)', battery_after: 'Pin sau (%)', charge_minutes: 'Thời gian sạc (phút)', odo_at_refuel: 'ODO lúc cấp',
   full_name: 'Họ tên', phone: 'SĐT', license: 'Bằng lái', role: 'Quyền', active: 'Làm việc', email: 'Tên đăng nhập',
-  location: 'Địa điểm', description: 'Mô tả', pre_notes: 'Ghi chú nhận xe', post_notes: 'Ghi chú cuối ca',
+  value: 'Giá trị', location: 'Địa điểm', description: 'Mô tả', pre_notes: 'Ghi chú nhận xe', post_notes: 'Ghi chú cuối ca',
 };
 const IGNORE = new Set(['photos', 'photos_start', 'photos_end', 'photo_pump', 'photo_receipt', 'id', 'created_at', 'start_time', 'trip_id']);
 const STATUS_BY_TABLE: Record<string, Record<string, string>> = {
@@ -71,6 +71,7 @@ export default function AuditLog({ lk }: { lk: Lookups }) {
     if (f === 'end_time') return new Date(String(v)).toLocaleString('vi-VN');
     if (f === 'email') return String(v).replace('@fleetops.local', '');
     if (typeof v === 'number') return v.toLocaleString('vi-VN');
+    if (typeof v === 'object') return JSON.stringify(v);
     return String(v);
   };
 
@@ -82,6 +83,7 @@ export default function AuditLog({ lk }: { lk: Lookups }) {
       case 'refuels': return `${lk.person(String(d.driver_id ?? ''))} · ${d.energy_type === 'electric' ? 'Điện' : 'Nhiên liệu'}`;
       case 'accidents': return `${lk.person(String(d.driver_id ?? ''))} · ${String(d.location ?? '')}`;
       case 'profiles': return String(d.full_name ?? '') || val(null, 'email', d.email);
+      case 'app_settings': return String(d.key ?? '');
       default: return '';
     }
   };

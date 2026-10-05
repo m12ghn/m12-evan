@@ -6,6 +6,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### ✨ Tính năng mới
 
+- **Thông báo Telegram: vào ca, sạc điện, kết thúc ca** _(Cả hai)_ — Khi tài xế vào ca, gửi phiếu sạc điện / đổ nhiên liệu, hoặc kết thúc ca, bot tự gửi tin theo mẫu GHN (HỌ TÊN, BKS, ĐỒNG HỒ ODO, % pin, giờ vào/kết thúc ca, kWh, thời gian sạc…) kèm các ảnh đã chụp vào nhóm Telegram. Quản lý cài Chat ID, gửi tin thử, xem nhật ký gửi, gửi lại tin lỗi và quét gửi bù ở Cài đặt → Thông báo Telegram. Mỗi sự kiện chỉ gửi một lần.
 - **Nhật ký cập nhật app (tab 📝 Cập nhật)** _(Quản lý)_ — Xem app đã được điều chỉnh gì theo từng ngày: thêm tính năng, chỉnh nút, sửa lỗi… Có lọc theo loại và ô tìm kiếm. Cũng có file CHANGELOG.md trong repo.
 - **Nhật ký thao tác (tab 🧾 Nhật ký)** _(Quản lý)_ — Tự ghi lại mọi thêm/sửa/xóa dữ liệu (kèm giá trị cũ → mới), đăng nhập/đăng xuất, tạo tài khoản, đổi tên đăng nhập, đổi mật khẩu, cho nghỉ việc. Lọc theo ngày/người/đối tượng/hành động, tải Excel. Không ai sửa hoặc xóa được nhật ký. `119c990`
 - **Mục 🚨 Báo cáo tai nạn** _(Tài xế)_ — Dùng được cả khi chưa vào ca. Nhập địa điểm, mô tả, chọn xe liên quan; ảnh tối đa 6 (chụp hoặc chọn từ máy, xóa được từng ảnh). Quản lý có tab 🚨 Tai nạn để xem ảnh, đổi trạng thái, ghi chú, chuyển xe sang đang sửa chữa. `9b57273`
@@ -31,6 +32,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### ⚙️ Hệ thống
 
+- **Cơ sở dữ liệu: migration 008 (Telegram)** _(Cả hai)_ — Thêm bảng cài đặt chung (app_settings) và nhật ký gửi Telegram (telegram_log). Token bot không lưu trong cơ sở dữ liệu mà ở biến môi trường TELEGRAM_BOT_TOKEN trên Vercel.
 - **Cơ sở dữ liệu: migration 007 (hiệu năng + bảo mật)** _(Cả hai)_ — Thêm chỉ mục cho các truy vấn thường dùng; viết lại chính sách phân quyền theo khuyến nghị hiệu năng của Supabase; người dùng không còn tự đổi được quyền, trạng thái làm việc hay tên đăng nhập của mình.
 - **Cập nhật cơ sở dữ liệu: migration 004, 005, 006** _(Cả hai)_ — 004: nhiều ảnh cho phiếu nhiên liệu/điện. 005: phiếu sạc điện, trạng thái nghỉ việc, trạng thái xe mới, bảng báo cáo tai nạn. 006: nhật ký thao tác.
 

@@ -38,3 +38,11 @@ supabase/    schema.sql (bảng + RLS + storage), seed.sql
 
 ## Nhật ký cập nhật
 Các điều chỉnh của app được ghi theo ngày trong `src/changelog.json` → `CHANGELOG.md` (chạy `npm run changelog`). Trong app: Quản lý → tab 📝 Cập nhật.
+
+## Thông báo Telegram
+Tài xế vào ca / sạc điện (cấp nhiên liệu) / kết thúc ca → bot tự gửi tin theo mẫu kèm ảnh vào nhóm Telegram.
+1. Tạo bot với @BotFather, lấy token. **Không dán token vào chat hay commit vào repo.**
+2. Vercel → Settings → Environment Variables: thêm `TELEGRAM_BOT_TOKEN` (Sensitive), rồi Redeploy.
+3. Supabase → SQL Editor: chạy `supabase/migration-008-telegram.sql`.
+4. Thêm bot vào nhóm, rồi trong app: Quản lý → Cài đặt → Thông báo Telegram: nhập Chat ID, bật, Gửi thử, Lưu.
+Mẫu tin nằm trong `api/_telegram.js` (hàm `buildMessage`).

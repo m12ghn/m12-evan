@@ -1,6 +1,8 @@
 -- SETUP MỘT LẦN: schema + xe mẫu + 2 tài khoản test. Dán toàn bộ vào Supabase → SQL Editor → Run.
 -- CẢNH BÁO: script xóa & tạo lại các bảng của app (profiles, vehicles, trips, refuels) nên chỉ dùng khi mới cài đặt.
 drop trigger if exists on_auth_user_created on auth.users;
+drop table if exists public.telegram_log cascade;
+drop table if exists public.app_settings cascade;
 drop table if exists public.audit_log cascade;
 drop table if exists public.accidents cascade;
 drop table if exists public.refuels cascade;
@@ -271,19 +273,18 @@ declare
   claims jsonb := coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
   nm text; old_j jsonb; new_j jsonb; chg jsonb; rid text; row_j jsonb;
 begin
-  -- Thao tác của máy chủ qua khóa service_role (hàm /api/admin-users) tự ghi nhật ký riêng, tránh ghi trùng
   if uid is null and claims->>'role' = 'service_role' then return coalesce(new, old); end if;
 
   select coalesce(full_name, email) into nm from profiles where id = uid;
   if tg_op = 'INSERT' then
-    new_j := to_jsonb(new); row_j := new_j; rid := new_j->>'id'; chg := null;
+    new_j := to_jsonb(new); row_j := new_j; rid := coalesce(new_j->>'id', new_j->>'key'); chg := null;
   elsif tg_op = 'UPDATE' then
-    old_j := to_jsonb(old); new_j := to_jsonb(new); row_j := new_j; rid := new_j->>'id';
+    old_j := to_jsonb(old); new_j := to_jsonb(new); row_j := new_j; rid := coalesce(new_j->>'id', new_j->>'key');
     select jsonb_object_agg(k, jsonb_build_object('old', old_j->k, 'new', new_j->k)) into chg
-      from jsonb_object_keys(new_j) k where old_j->k is distinct from new_j->k;
-    if chg is null then return new; end if;  -- không có gì thay đổi
+      from jsonb_object_keys(new_j) k where old_j->k is distinct from new_j->k and k <> 'updated_at';
+    if chg is null then return new; end if;
   else
-    old_j := to_jsonb(old); row_j := old_j; rid := old_j->>'id'; chg := null;
+    old_j := to_jsonb(old); row_j := old_j; rid := coalesce(old_j->>'id', old_j->>'key'); chg := null;
   end if;
 
   insert into audit_log (actor_id, actor_name, action, table_name, record_id, row_data, changes)
@@ -314,6 +315,39 @@ end $$;
 revoke all on function public.log_event(text) from public;
 grant execute on function public.log_event(text) to authenticated;
 
+
+-- 5e. Telegram
+create table if not exists public.app_settings (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.app_settings enable row level security;
+drop policy if exists "app_settings: manager toàn quyền" on public.app_settings;
+create policy "app_settings: manager toàn quyền" on public.app_settings for all
+  using ((select public.is_manager())) with check ((select public.is_manager()));
+
+-- Nhật ký các tin đã gửi (để không gửi trùng, và để gửi lại khi lỗi)
+create table if not exists public.telegram_log (
+  id bigint generated always as identity primary key,
+  at timestamptz not null default now(),
+  event text not null,            -- checkin | refuel | checkout | test
+  ref_id text,                    -- id ca / phiếu
+  chat_id text,
+  status text not null check (status in ('pending','sent','failed')),
+  error text,
+  message_id bigint
+);
+create unique index if not exists telegram_log_once_idx on public.telegram_log (event, ref_id) where status in ('sent','pending');
+create index if not exists telegram_log_at_idx on public.telegram_log (at desc);
+alter table public.telegram_log enable row level security;
+drop policy if exists "telegram_log: manager xem" on public.telegram_log;
+create policy "telegram_log: manager xem" on public.telegram_log for select using ((select public.is_manager()));
+revoke all on public.telegram_log from anon, authenticated;
+grant select on public.telegram_log to authenticated;
+
+create trigger audit_app_settings after insert or update or delete on public.app_settings
+  for each row execute function public.audit_row();
 
 -- 5d. Chỉ mục
 -- Chỉ mục cho các truy vấn thường dùng (danh sách ca/phiếu/tai nạn, tra cứu theo tài xế/xe/trạng thái)
