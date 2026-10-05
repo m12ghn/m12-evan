@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { uploadPhoto } from '../../lib/storage';
+import { uploadPhotos } from '../../lib/storage';
 import { energyLabels, type Vehicle } from '../../lib/types';
 import { useDraft } from '../../lib/draft';
+import { onlyDigits } from '../../lib/numbers';
 import PhotoSet, { photosComplete, type Photos } from './PhotoSet';
 
 export default function CheckIn({ userId, onDone, onBack }: { userId: string; onDone: () => void; onBack: () => void }) {
@@ -14,6 +15,7 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
   const [agree, setAgree] = useState(false);
   const [photos, setPhotos] = useState<Photos>({});
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
 
   const draft = useDraft(`checkin:${userId}`, { vehicleId, odo, level, notes, agree, photos }, d => {
@@ -43,12 +45,13 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
     if (!v) return;
     setBusy(true); setError('');
     try {
-      const paths: Record<string, string> = {};
-      for (const [k, blob] of Object.entries(photos)) paths[k] = await uploadPhoto(userId, 'checkin', blob!);
+      const paths = await uploadPhotos(userId, 'checkin', Object.entries(photos) as [string, Blob][], (d, t) => setProgress(`Đang tải ảnh ${d}/${t}…`));
+      setProgress('Đang gửi…');
       const { error: e } = await supabase.rpc('start_trip', {
         p_vehicle: v.id, p_odo: Number(odo), p_level: level, p_notes: notes, p_photos: paths,
       });
-      if (e) throw e;
+      // Gửi lại sau khi mất mạng mà lần trước đã thành công → ca đã mở, chỉ cần làm mới màn hình
+      if (e && !/đang có ca chưa trả xe/.test(e.message)) throw e;
       await draft.clear();
       onDone();
     } catch (e) { setError((e as Error).message); setBusy(false); }
@@ -63,7 +66,12 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
         {vehicles.map(x => <option key={x.id} value={x.id}>{x.plate} • {x.type} ({x.energy_type === 'electric' ? '⚡' : '⛽'} {x.energy_level}%)</option>)}
       </select>
       {v && <>
-        <label>ODO đầu ca (km)<input type="number" inputMode="numeric" value={odo} onChange={e => setOdo(e.target.value)} /></label>
+        <label>ODO đầu ca (km)<input inputMode="numeric" pattern="[0-9]*" value={odo} onChange={e => setOdo(onlyDigits(e.target.value))} /></label>
+        <p className={odo !== '' && Number(odo) !== v.odo ? 'error' : 'muted'}>
+          ODO chốt ca trước: <b>{v.odo.toLocaleString()} km</b>
+          {odo !== '' && Number(odo) < v.odo && ' — thấp hơn ca trước, hãy kiểm tra lại số trên đồng hồ'}
+          {odo !== '' && Number(odo) > v.odo && ` — cao hơn ${(Number(odo) - v.odo).toLocaleString()} km so với ca trước`}
+        </p>
         <label>{L.level}: {level}% (~{Math.round(level / 100 * v.capacity)} {L.unit})
           <input type="range" min={0} max={100} value={level} onChange={e => setLevel(Number(e.target.value))} /></label>
         <PhotoSet photos={photos} onChange={setPhotos} />
@@ -72,7 +80,7 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
           Tôi xác nhận tình trạng xe khi nhận đúng như ảnh</label>
       </>}
       {error && <p className="error">{error}</p>}
-      <button className="btn" disabled={!valid || busy} onClick={submit}>{busy ? 'Đang gửi…' : 'Bắt đầu ca'}</button>
+      <button className="btn" disabled={!valid || busy} onClick={submit}>{busy ? progress || 'Đang gửi…' : 'Bắt đầu ca'}</button>
     </div>
   );
 }

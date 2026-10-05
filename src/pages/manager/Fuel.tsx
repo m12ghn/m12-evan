@@ -22,12 +22,17 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    const [r, t] = await Promise.all([
-      supabase.from('refuels').select('*').order('created_at', { ascending: false }).limit(200),
-      supabase.from('trips').select('id, vehicle_id').limit(500),
-    ]);
-    setRows((r.data as Row[]) ?? []);
-    setTripVehicle(Object.fromEntries((t.data ?? []).map(x => [x.id, x.vehicle_id])));
+    const { data: r } = await supabase.from('refuels').select('*').order('created_at', { ascending: false }).limit(200);
+    const list = (r as Row[]) ?? [];
+    setRows(list);
+    // Chỉ tra cứu đúng các ca có phiếu (chia nhóm 100 để URL không quá dài)
+    const ids = [...new Set(list.map(x => x.trip_id))];
+    const map: Record<string, string> = {};
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data: t } = await supabase.from('trips').select('id, vehicle_id').in('id', ids.slice(i, i + 100));
+      (t ?? []).forEach(x => { map[x.id] = x.vehicle_id; });
+    }
+    setTripVehicle(map);
   }, []);
   useEffect(() => { load(); }, [load]);
 

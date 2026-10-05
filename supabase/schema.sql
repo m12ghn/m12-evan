@@ -32,8 +32,10 @@ create or replace function public.protect_role() returns trigger
 language plpgsql as $$
 begin
   -- auth.uid() null = chạy từ SQL Editor / service role (quản trị hệ thống) → cho phép
-  if new.role is distinct from old.role and auth.uid() is not null and not public.is_manager() then
-    raise exception 'Không được đổi role';
+  if auth.uid() is not null and not public.is_manager() then
+    if new.role is distinct from old.role then raise exception 'Không được đổi role'; end if;
+    if new.active is distinct from old.active then raise exception 'Không được đổi trạng thái làm việc'; end if;
+    if new.email is distinct from old.email then raise exception 'Không được đổi tên đăng nhập'; end if;
   end if;
   return new;
 end $$;
@@ -127,11 +129,11 @@ create table public.accidents (
 );
 alter table public.accidents enable row level security;
 create policy "accidents: tài xế tạo báo cáo của mình" on public.accidents for insert with check (
-  driver_id = auth.uid() and status = 'new'
-  and (trip_id is null or exists (select 1 from public.trips t where t.id = trip_id and t.driver_id = auth.uid()))
+  driver_id = (select auth.uid()) and status = 'new'
+  and (trip_id is null or exists (select 1 from public.trips t where t.id = trip_id and t.driver_id = (select auth.uid())))
 );
-create policy "accidents: đọc của mình hoặc manager" on public.accidents for select using (driver_id = auth.uid() or public.is_manager());
-create policy "accidents: manager cập nhật" on public.accidents for update using (public.is_manager());
+create policy "accidents: đọc của mình hoặc manager" on public.accidents for select using (driver_id = (select auth.uid()) or (select public.is_manager()));
+create policy "accidents: manager cập nhật" on public.accidents for update using ((select public.is_manager()));
 
 
 -- 5. RLS -----------------------------------------------------------------------
@@ -141,26 +143,26 @@ alter table trips    enable row level security;
 alter table refuels  enable row level security;
 
 create policy "profiles: đọc của mình hoặc manager" on profiles for select
-  using (id = auth.uid() or is_manager());
+  using (id = (select auth.uid()) or (select public.is_manager()));
 create policy "profiles: sửa của mình hoặc manager" on profiles for update
-  using (id = auth.uid() or is_manager());
-create policy "profiles: manager toàn quyền" on profiles for all using (is_manager());
+  using (id = (select auth.uid()) or (select public.is_manager()));
+create policy "profiles: manager toàn quyền" on profiles for all using ((select public.is_manager()));
 
-create policy "vehicles: ai đăng nhập cũng đọc" on vehicles for select using (auth.uid() is not null);
-create policy "vehicles: manager toàn quyền" on vehicles for all using (is_manager());
+create policy "vehicles: ai đăng nhập cũng đọc" on vehicles for select using ((select auth.uid()) is not null);
+create policy "vehicles: manager toàn quyền" on vehicles for all using ((select public.is_manager()));
 -- Tài xế KHÔNG sửa trực tiếp vehicles/trips: nhận/trả xe qua hàm start_trip/end_trip (cuối file).
 
 create policy "trips: đọc của mình hoặc manager" on trips for select
-  using (driver_id = auth.uid() or is_manager());
-create policy "trips: manager sửa ca" on trips for update using (is_manager());
+  using (driver_id = (select auth.uid()) or (select public.is_manager()));
+create policy "trips: manager sửa ca" on trips for update using ((select public.is_manager()));
 
 create policy "refuels: đọc của mình hoặc manager" on refuels for select
-  using (driver_id = auth.uid() or is_manager());
+  using (driver_id = (select auth.uid()) or (select public.is_manager()));
 create policy "refuels: tài xế tạo phiếu của mình" on refuels for insert with check (
-  driver_id = auth.uid() and status = 'pending'
-  and exists (select 1 from trips t where t.id = trip_id and t.driver_id = auth.uid() and t.status = 'on_duty')
+  driver_id = (select auth.uid()) and status = 'pending'
+  and exists (select 1 from trips t where t.id = trip_id and t.driver_id = (select auth.uid()) and t.status = 'on_duty')
 );
-create policy "refuels: manager duyệt" on refuels for update using (is_manager());
+create policy "refuels: manager duyệt" on refuels for update using ((select public.is_manager()));
 
 -- 5b. Hàm nhận xe / trả xe
 -- Nhận xe / trả xe chạy trọn gói trong DB (atomic + kiểm tra hợp lệ), thay cho việc tài xế tự sửa bảng vehicles/trips.
@@ -245,7 +247,7 @@ create index if not exists audit_log_table_idx on public.audit_log (table_name);
 
 alter table public.audit_log enable row level security;
 drop policy if exists "audit_log: manager xem" on public.audit_log;
-create policy "audit_log: manager xem" on public.audit_log for select using (public.is_manager());
+create policy "audit_log: manager xem" on public.audit_log for select using ((select public.is_manager()));
 -- Không có policy insert/update/delete: chỉ trigger/hàm hệ thống mới ghi được, không ai sửa hay xóa được qua app.
 revoke all on public.audit_log from anon, authenticated;
 grant select on public.audit_log to authenticated;
@@ -301,12 +303,24 @@ revoke all on function public.log_event(text) from public;
 grant execute on function public.log_event(text) to authenticated;
 
 
+-- 5d. Chỉ mục
+-- Chỉ mục cho các truy vấn thường dùng (danh sách ca/phiếu/tai nạn, tra cứu theo tài xế/xe/trạng thái)
+create index if not exists trips_driver_status_idx on public.trips (driver_id, status);
+create index if not exists trips_vehicle_idx on public.trips (vehicle_id);
+create index if not exists trips_start_time_idx on public.trips (start_time desc);
+create index if not exists refuels_trip_idx on public.refuels (trip_id);
+create index if not exists refuels_status_idx on public.refuels (status, created_at desc);
+create index if not exists refuels_driver_idx on public.refuels (driver_id);
+create index if not exists accidents_status_idx on public.accidents (status, created_at desc);
+create index if not exists accidents_driver_idx on public.accidents (driver_id);
+create index if not exists vehicles_status_idx on public.vehicles (status);
+
 -- 6. Storage ảnh (taplo, 4 góc xe, cột bơm, hóa đơn) -------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
   values ('photos', 'photos', false, 5242880, array['image/jpeg','image/png','image/webp'])
   on conflict do nothing;
 
 create policy "photos: đăng nhập được upload vào thư mục của mình" on storage.objects for insert
-  with check (bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy "photos: đọc ảnh của mình hoặc manager" on storage.objects for select
-  using (bucket_id = 'photos' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_manager()));
+  using (bucket_id = 'photos' and ((storage.foldername(name))[1] = (select auth.uid())::text or (select public.is_manager())));

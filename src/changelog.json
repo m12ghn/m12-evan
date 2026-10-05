@@ -5,6 +5,54 @@
       {
         "type": "change",
         "scope": "driver",
+        "title": "Tải ảnh nhanh và chắc hơn trên mạng yếu",
+        "detail": "Tải tối đa 3 ảnh cùng lúc (trước đây lần lượt từng ảnh), tự thử lại khi lỗi mạng, hiện tiến độ \"Đang tải ảnh 2/5…\", gửi lại không tải trùng ảnh. Áp dụng cho chụp đầu ca, cuối ca, cấp nhiên liệu/điện và báo cáo tai nạn."
+      },
+      {
+        "type": "fix",
+        "scope": "driver",
+        "title": "Gửi lại sau khi mất mạng không bị tạo trùng hoặc báo lỗi nhầm",
+        "detail": "Phiếu nhiên liệu/điện và báo cáo tai nạn không bị ghi hai lần khi gửi lại. Nhận xe/trả xe mà lần trước đã thành công thì tự làm mới màn hình thay vì báo lỗi."
+      },
+      {
+        "type": "change",
+        "scope": "driver",
+        "title": "Chụp đầu ca: hiện ODO chốt ca trước và cảnh báo khi số lệch",
+        "detail": "Cảnh báo đỏ nếu ODO nhập thấp hơn ODO ca trước hoặc cao hơn (kèm số km chênh). Ô ODO chỉ nhận chữ số."
+      },
+      {
+        "type": "change",
+        "scope": "manager",
+        "title": "Xem ảnh trong chi tiết nhanh hơn",
+        "detail": "Ký đường dẫn cả bộ ảnh trong một yêu cầu thay vì từng ảnh một."
+      },
+      {
+        "type": "change",
+        "scope": "manager",
+        "title": "Nhật ký ca: cảnh báo ca quá 12 giờ chưa trả xe",
+        "detail": "Ca đang chạy quá 12 giờ hiện dòng đỏ \"Quá 12 giờ chưa trả xe\"."
+      },
+      {
+        "type": "fix",
+        "scope": "manager",
+        "title": "Duyệt phiếu: phiếu cũ không còn hiện biển số \"—\"",
+        "detail": "Trước đây chỉ tra cứu xe trong 500 ca gần nhất nên phiếu của ca cũ bị mất biển số."
+      },
+      {
+        "type": "change",
+        "scope": "all",
+        "title": "Tách gói tải theo quyền",
+        "detail": "Tài xế không còn tải mã trang quản lý (và ngược lại); có chữ \"Đang tải…\" khi mở trang."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 007 (hiệu năng + bảo mật)",
+        "detail": "Thêm chỉ mục cho các truy vấn thường dùng; viết lại chính sách phân quyền theo khuyến nghị hiệu năng của Supabase; người dùng không còn tự đổi được quyền, trạng thái làm việc hay tên đăng nhập của mình."
+      },
+      {
+        "type": "change",
+        "scope": "driver",
         "title": "Báo cáo tai nạn: bắt buộc chọn \"Xe bị tai nạn\"",
         "detail": "Đổi ô \"Xe liên quan\" (tùy chọn) thành \"Xe bị tai nạn\" (bắt buộc). Xe đang chạy được đưa lên đầu danh sách và chọn sẵn. Lịch sử báo cáo của tài xế hiện thêm biển số xe."
       },

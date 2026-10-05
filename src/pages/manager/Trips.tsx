@@ -129,7 +129,7 @@ export default function Trips({ lk }: { lk: Lookups }) {
                     <td>{fmt(t.start_time)}{t.end_time ? ` → ${fmt(t.end_time)}` : ''}</td>
                     <td>{lk.plate(t.vehicle_id)}<br /><small className="muted">{v?.type}</small></td><td>{lk.person(t.driver_id)}</td>
                     <td>{t.start_odo.toLocaleString()} → {t.end_odo?.toLocaleString() ?? '…'}</td>
-                    <td>{t.status === 'on_duty' ? <span className="chip on_duty">Đang chạy</span> : `${t.km_driven?.toLocaleString()} km`}</td>
+                    <td>{t.status === 'on_duty' ? <><span className="chip on_duty">Đang chạy</span>{Date.now() - Date.parse(t.start_time) > 12 * 3600_000 && <><br /><small className="error">⏰ Quá 12 giờ chưa trả xe</small></>}</> : `${t.km_driven?.toLocaleString()} km`}</td>
                     <td className={high ? 'error' : ''}>{t.energy_rate != null ? `${t.energy_rate} ${unit}/100km${high ? ' ⚠️' : ''}` : '—'}</td>
                     <td>{t.has_damage ? <span className="chip maintenance">Có sự cố</span> : t.status === 'completed' ? '✓ Nguyên vẹn' : '—'}</td>
                     <td><button className="btn ghost" onClick={() => setOpen(open === t.id ? '' : t.id)}>{open === t.id ? 'Đóng' : 'Chi tiết'}</button></td>

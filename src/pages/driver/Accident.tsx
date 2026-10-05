@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { uploadPhoto } from '../../lib/storage';
+import { uploadPhotos } from '../../lib/storage';
 import { useDraft } from '../../lib/draft';
 import PhotoInput from '../../components/PhotoInput';
 import type { Trip, Vehicle } from '../../lib/types';
@@ -29,6 +29,8 @@ export default function Accident({ userId, trip, vehicle, onBack }: { userId: st
   const [photos, setPhotos] = useState<Blob[]>([]);
   const [mine, setMine] = useState<Mine[]>([]);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState('');
+  const rid = useRef(crypto.randomUUID());
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
 
@@ -52,13 +54,15 @@ export default function Accident({ userId, trip, vehicle, onBack }: { userId: st
   async function submit() {
     setBusy(true); setError(''); setSent(false);
     try {
-      const paths: string[] = [];
-      for (const b of photos) paths.push(await uploadPhoto(userId, 'accident', b));
+      const up = await uploadPhotos(userId, 'accident', photos.map((b, i) => [i, b] as [number, Blob]), (d, t) => setProgress(`Đang tải ảnh ${d}/${t}…`));
+      const paths = photos.map((_, i) => up[i]);
+      setProgress('Đang gửi…');
       const { error: e } = await supabase.from('accidents').insert({
-        driver_id: userId, vehicle_id: vehicleId, trip_id: trip?.id ?? null,
+        id: rid.current, driver_id: userId, vehicle_id: vehicleId, trip_id: trip?.id ?? null,
         location: location.trim(), description: description.trim(), photos: paths,
       });
-      if (e) throw e;
+      if (e && e.code !== '23505') throw e;
+      rid.current = crypto.randomUUID();
       setLocation(''); setDescription(''); setPhotos([]); setSent(true);
       await draft.clear(); await loadMine();
     } catch (e) { setError((e as Error).message); }
@@ -98,7 +102,7 @@ export default function Accident({ userId, trip, vehicle, onBack }: { userId: st
 
       {error && <p className="error">{error}</p>}
       {sent && <p style={{ color: 'var(--success)' }}>✓ Đã gửi báo cáo tai nạn cho quản lý.</p>}
-      <button className="btn" disabled={!valid || busy} onClick={submit}>{busy ? 'Đang gửi…' : 'Gửi báo cáo tai nạn'}</button>
+      <button className="btn" disabled={!valid || busy} onClick={submit}>{busy ? progress || 'Đang gửi…' : 'Gửi báo cáo tai nạn'}</button>
 
       {mine.length > 0 && (
         <>

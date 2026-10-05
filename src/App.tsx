@@ -1,8 +1,10 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import Login from './pages/Login';
-import ManagerHome from './pages/ManagerHome';
-import DriverHome from './pages/DriverHome';
+// Tách gói theo quyền: tài xế không phải tải mã trang quản lý (và ngược lại)
+const ManagerHome = lazy(() => import('./pages/ManagerHome'));
+const DriverHome = lazy(() => import('./pages/DriverHome'));
 
 export default function App() {
   const { session, profile, loading, signOut } = useAuth();
@@ -23,10 +25,12 @@ export default function App() {
 
   // Một link duy nhất: role quyết định trang hiển thị.
   return (
+    <Suspense fallback={<div className="center">Đang tải…</div>}>
     <Routes>
       <Route path="/manager/*" element={profile.role === 'manager' ? <ManagerHome /> : <Navigate to="/" replace />} />
       <Route path="/driver/*" element={profile.role === 'driver' ? <DriverHome /> : <Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to={profile.role === 'manager' ? '/manager' : '/driver'} replace />} />
     </Routes>
+    </Suspense>
   );
 }

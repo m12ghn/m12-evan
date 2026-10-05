@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { uploadPhoto } from '../../lib/storage';
+import { uploadPhotos } from '../../lib/storage';
 import { energyLabels, refuelSlots, type Refuel as RefuelRow, type Trip, type Vehicle } from '../../lib/types';
 import { useDraft } from '../../lib/draft';
 import { clampPercent, cleanDecimal, fmtThousands, onlyDigits } from '../../lib/numbers';
@@ -28,6 +28,8 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
   const [minutes, setMinutes] = useState('');
   const [amount, setAmount] = useState(''); // chỉ chứa chữ số
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState('');
+  const rid = useRef(crypto.randomUUID()); // id cố định cho mỗi lần gửi → gửi lại không bị tạo trùng phiếu
   const [error, setError] = useState('');
 
   const draft = useDraft(`refuel:${trip.id}`, { odo, photos, qty, price, station, batBefore, batAfter, kwh, minutes, amount }, d => {
@@ -58,10 +60,10 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
   async function submit() {
     setBusy(true); setError('');
     try {
-      const paths: Record<string, string> = {};
-      for (const [k] of slots) paths[k] = await uploadPhoto(userId, 'refuel', photos[k]);
+      const paths = await uploadPhotos(userId, 'refuel', slots.map(([k]) => [k, photos[k]] as [string, Blob]), (d, t) => setProgress(`Đang tải ảnh ${d}/${t}…`));
+      setProgress('Đang gửi…');
       const base = {
-        trip_id: trip.id, driver_id: userId, energy_type: vehicle.energy_type, fuel_type: vehicle.fuel_type,
+        id: rid.current, trip_id: trip.id, driver_id: userId, energy_type: vehicle.energy_type, fuel_type: vehicle.fuel_type,
         odo_at_refuel: Number(odo), photos: paths,
         photo_pump: paths.pump ?? null, photo_receipt: paths.receipt ?? null, // giữ tương thích dữ liệu cũ
       };
@@ -72,7 +74,8 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
           }
         : { ...base, quantity: Number(qty), unit_price: Number(price), total_amount: Math.round(fuelTotal), station: station || null };
       const { error: e } = await supabase.from('refuels').insert(row);
-      if (e) throw e;
+      if (e && e.code !== '23505') throw e; // 23505 = phiếu này đã được ghi từ lần gửi trước
+      rid.current = crypto.randomUUID();
       setQty(''); setStation(''); setBatBefore(''); setBatAfter(''); setKwh(''); setMinutes(''); setAmount(''); setPhotos({});
       await draft.clear();
       await load();
@@ -114,7 +117,7 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
         ))}
       </div>
       {error && <p className="error">{error}</p>}
-      <button className="btn" disabled={!valid || busy} onClick={submit}>{busy ? 'Đang gửi…' : 'Gửi phiếu chờ duyệt'}</button>
+      <button className="btn" disabled={!valid || busy} onClick={submit}>{busy ? progress || 'Đang gửi…' : 'Gửi phiếu chờ duyệt'}</button>
 
       <h3>Lịch sử trong ca ({list.length})</h3>
       {list.length === 0 && <p className="muted">Chưa có lần nào</p>}

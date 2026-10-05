@@ -15,15 +15,23 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🔧 Chỉnh sửa
 
+- **Tải ảnh nhanh và chắc hơn trên mạng yếu** _(Tài xế)_ — Tải tối đa 3 ảnh cùng lúc (trước đây lần lượt từng ảnh), tự thử lại khi lỗi mạng, hiện tiến độ "Đang tải ảnh 2/5…", gửi lại không tải trùng ảnh. Áp dụng cho chụp đầu ca, cuối ca, cấp nhiên liệu/điện và báo cáo tai nạn.
+- **Chụp đầu ca: hiện ODO chốt ca trước và cảnh báo khi số lệch** _(Tài xế)_ — Cảnh báo đỏ nếu ODO nhập thấp hơn ODO ca trước hoặc cao hơn (kèm số km chênh). Ô ODO chỉ nhận chữ số.
+- **Xem ảnh trong chi tiết nhanh hơn** _(Quản lý)_ — Ký đường dẫn cả bộ ảnh trong một yêu cầu thay vì từng ảnh một.
+- **Nhật ký ca: cảnh báo ca quá 12 giờ chưa trả xe** _(Quản lý)_ — Ca đang chạy quá 12 giờ hiện dòng đỏ "Quá 12 giờ chưa trả xe".
+- **Tách gói tải theo quyền** _(Cả hai)_ — Tài xế không còn tải mã trang quản lý (và ngược lại); có chữ "Đang tải…" khi mở trang.
 - **Báo cáo tai nạn: bắt buộc chọn "Xe bị tai nạn"** _(Tài xế)_ — Đổi ô "Xe liên quan" (tùy chọn) thành "Xe bị tai nạn" (bắt buộc). Xe đang chạy được đưa lên đầu danh sách và chọn sẵn. Lịch sử báo cáo của tài xế hiện thêm biển số xe.
 - **Cấp điện: thay các ô nhập cũ bằng 6 ô mới** _(Tài xế)_ — ĐỒNG HỒ ODO, PIN TRƯỚC KHI SẠC (0–100%), PIN SAU KHI SẠC (0–100%), KWH (có số thập phân), THỜI GIAN SẠC (phút), THÀNH TIỀN (VND, tự hiện dạng 214,000). Phiếu cũ giữ nguyên. Trang quản lý hiển thị pin trước → sau, kWh, phút sạc, thành tiền. `9b57273`
 
 ### 🐞 Sửa lỗi
 
+- **Gửi lại sau khi mất mạng không bị tạo trùng hoặc báo lỗi nhầm** _(Tài xế)_ — Phiếu nhiên liệu/điện và báo cáo tai nạn không bị ghi hai lần khi gửi lại. Nhận xe/trả xe mà lần trước đã thành công thì tự làm mới màn hình thay vì báo lỗi.
+- **Duyệt phiếu: phiếu cũ không còn hiện biển số "—"** _(Quản lý)_ — Trước đây chỉ tra cứu xe trong 500 ca gần nhất nên phiếu của ca cũ bị mất biển số.
 - **Mở ảnh ở tab mới không làm tab gốc bị tải lại** _(Cả hai)_ — Trước đây quay lại tab gốc thì trang quản lý bị dựng lại, mất bộ lọc và chi tiết đang mở. `4a90d9c`
 
 ### ⚙️ Hệ thống
 
+- **Cơ sở dữ liệu: migration 007 (hiệu năng + bảo mật)** _(Cả hai)_ — Thêm chỉ mục cho các truy vấn thường dùng; viết lại chính sách phân quyền theo khuyến nghị hiệu năng của Supabase; người dùng không còn tự đổi được quyền, trạng thái làm việc hay tên đăng nhập của mình.
 - **Cập nhật cơ sở dữ liệu: migration 004, 005, 006** _(Cả hai)_ — 004: nhiều ảnh cho phiếu nhiên liệu/điện. 005: phiếu sạc điện, trạng thái nghỉ việc, trạng thái xe mới, bảng báo cáo tai nạn. 006: nhật ký thao tác.
 
 ## 01/10/2026 (Thứ năm)
