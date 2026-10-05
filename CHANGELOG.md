@@ -16,6 +16,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🔧 Chỉnh sửa
 
+- **Telegram: hỗ trợ nhóm có chủ đề (topic)** _(Quản lý)_ — Chat ID nhập dạng -100…_mã_topic (vd -1003936059980_8) để gửi vào đúng chủ đề; mỗi loại tin (vào ca, sạc điện, kết thúc ca) vào một chủ đề riêng.
 - **Tải ảnh nhanh và chắc hơn trên mạng yếu** _(Tài xế)_ — Tải tối đa 3 ảnh cùng lúc (trước đây lần lượt từng ảnh), tự thử lại khi lỗi mạng, hiện tiến độ "Đang tải ảnh 2/5…", gửi lại không tải trùng ảnh. Áp dụng cho chụp đầu ca, cuối ca, cấp nhiên liệu/điện và báo cáo tai nạn.
 - **Chụp đầu ca: hiện ODO chốt ca trước và cảnh báo khi số lệch** _(Tài xế)_ — Cảnh báo đỏ nếu ODO nhập thấp hơn ODO ca trước hoặc cao hơn (kèm số km chênh). Ô ODO chỉ nhận chữ số.
 - **Xem ảnh trong chi tiết nhanh hơn** _(Quản lý)_ — Ký đường dẫn cả bộ ảnh trong một yêu cầu thay vì từng ảnh một.

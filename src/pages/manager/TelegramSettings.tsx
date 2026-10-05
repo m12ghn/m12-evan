@@ -8,7 +8,8 @@ interface Status { tokenConfigured: boolean; bot?: string; tokenError?: string }
 
 const EMPTY: Cfg = { enabled: false, default_chat: '', checkin_chat: '', refuel_chat: '', checkout_chat: '' };
 const EVENT: Record<string, string> = { checkin: 'Vào ca', refuel: 'Sạc điện / đổ nhiên liệu', checkout: 'Kết thúc ca', test: 'Tin thử' };
-const validChat = (s: string) => s === '' || /^-?\d{5,}$/.test(s) || /^@\w{4,}$/.test(s);
+// Chat ID: -100… ; nhóm có chủ đề (topic) thêm _mã_topic, vd -1003936059980_8 ; hoặc @tên_kênh
+const validChat = (s: string) => s === '' || /^-?\d{5,}(_\d+)?$/.test(s) || /^@\w{4,}$/.test(s);
 
 export default function TelegramSettings() {
   const [cfg, setCfg] = useState<Cfg>(EMPTY);
@@ -88,7 +89,8 @@ export default function TelegramSettings() {
               <button className="btn ghost" disabled={busy !== ''} onClick={() => test((cfg[k] as string) || cfg.default_chat)}>Gửi thử</button></div></label>
         ))}
       </div>
-      {!allValid && <p className="error">Chat ID chỉ gồm số (nhóm thường bắt đầu bằng -100…) hoặc @tên_kênh</p>}
+      {!allValid && <p className="error">Chat ID chỉ gồm số (bắt đầu bằng -100…), có thể thêm _mã_topic ở cuối (vd -1003936059980_8), hoặc @tên_kênh</p>}
+      <p className="muted">Nhóm có <b>chủ đề (topic)</b>: nhập <code>-100…_mã_topic</code>, ví dụ <code>-1003936059980_8</code> thì tin vào đúng chủ đề số 8. Mỗi loại tin có thể vào một chủ đề khác nhau.</p>
       <p className="muted">Cách lấy Chat ID: thêm bot vào nhóm, gửi một tin bất kỳ, rồi thêm tạm bot <b>@RawDataBot</b> vào nhóm để xem số "chat id" (dạng -100…), xong có thể xóa bot đó khỏi nhóm.</p>
 
       <div className="row" style={{ flexWrap: 'wrap' }}>

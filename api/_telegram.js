@@ -54,6 +54,12 @@ export function buildMessage(event, ctx) {
   throw new Error(`Sự kiện không hỗ trợ: ${event}`);
 }
 
+/** "-1003936059980_8" -> { chatId: "-1003936059980", threadId: 8 } (nhóm có chủ đề/topic); "@kênh" hoặc "-100…" giữ nguyên */
+export function parseChat(value) {
+  const m = String(value ?? '').trim().match(/^(-?\d+)_(\d+)$/);
+  return m ? { chatId: m[1], threadId: Number(m[2]) } : { chatId: String(value ?? '').trim(), threadId: undefined };
+}
+
 const scrub = (msg, token) => String(msg ?? '').split(token).join('***');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -73,12 +79,14 @@ async function call(token, method, body, isForm) {
 }
 
 /** Gửi chữ (không ảnh) hoặc ảnh + chú thích (1 ảnh = sendPhoto, 2–10 ảnh = album). Trả về message_id đầu tiên. */
-export async function sendToTelegram({ token, chatId, text, photos = [] }) {
+export async function sendToTelegram({ token, chatId: target, text, photos = [] }) {
+  const { chatId, threadId } = parseChat(target);
   const pics = photos.slice(0, 10);
-  if (!pics.length) return (await call(token, 'sendMessage', { chat_id: chatId, text })).message_id;
+  if (!pics.length) return (await call(token, 'sendMessage', { chat_id: chatId, text, ...(threadId ? { message_thread_id: threadId } : {}) })).message_id;
 
   const form = new FormData();
-  form.append('chat_id', String(chatId));
+  form.append('chat_id', chatId);
+  if (threadId) form.append('message_thread_id', String(threadId));
   if (pics.length === 1) {
     form.append('caption', text);
     form.append('photo', pics[0].blob, pics[0].name);
