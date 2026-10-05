@@ -6,8 +6,9 @@ import { energyLabels, type Trip, type Vehicle } from '../lib/types';
 import CheckIn from './driver/CheckIn';
 import Refuel from './driver/Refuel';
 import CheckOut from './driver/CheckOut';
+import Accident from './driver/Accident';
 
-type View = 'home' | 'checkin' | 'refuel' | 'checkout';
+type View = 'home' | 'checkin' | 'refuel' | 'checkout' | 'accident';
 
 export default function DriverHome() {
   const { session } = useAuth();
@@ -47,12 +48,13 @@ export default function DriverHome() {
     <Shell title="Tài xế" mobile>
       {loading ? <p className="muted">Đang tải…</p> :
         view === 'checkin' ? <CheckIn userId={userId} onDone={home} onBack={() => setView('home')} /> :
+        view === 'accident' ? <Accident userId={userId} trip={trip} vehicle={vehicle} onBack={() => setView('home')} /> :
         view === 'refuel' && trip && vehicle ? <Refuel userId={userId} trip={trip} vehicle={vehicle} onBack={() => setView('home')} /> :
         view === 'checkout' && trip && vehicle ? <CheckOut userId={userId} trip={trip} vehicle={vehicle} onDone={home} onBack={() => setView('home')} /> : (
           <div className="stack">
             {loadError && <p className="error">{loadError}</p>}
             {hasTripNoVehicle && <p className="error">Có ca đang chạy nhưng không tải được xe. Thử tải lại trang.</p>}
-            {!active && !loadError && <p className="muted">Chưa có ca đang chạy. Hãy chụp hình đầu ca để mở khóa 2 chức năng còn lại.</p>}
+            {!active && !loadError && <p className="muted">Chưa có ca đang chạy. Hãy chụp hình đầu ca để mở khóa Cấp nhiên liệu/điện và Chụp hình cuối ca.</p>}
             {active && vehicle && trip && (
               <div className="card">
                 <h3>Ca đang chạy: {vehicle.plate}</h3>
@@ -68,6 +70,9 @@ export default function DriverHome() {
             </button>
             <button className="menu" disabled={!active} onClick={() => setView('checkout')}>
               <span>🏁</span><div><b>Chụp hình cuối ca</b><small>Trả xe, ODO cuối, 5 ảnh, tình trạng xe</small></div>
+            </button>
+            <button className="menu" onClick={() => setView('accident')}>
+              <span>🚨</span><div><b>Báo cáo tai nạn</b><small>Gửi ngay, không cần chụp hình vào ca</small></div>
             </button>
           </div>
         )}

@@ -5,11 +5,21 @@ import ManagerHome from './pages/ManagerHome';
 import DriverHome from './pages/DriverHome';
 
 export default function App() {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, signOut } = useAuth();
 
   if (loading) return <div className="center">Đang tải…</div>;
   if (!session) return <Login />;
   if (!profile) return <div className="center">Không tìm thấy hồ sơ người dùng. Liên hệ quản trị.</div>;
+
+  if (profile.active === false) {
+    return (
+      <div className="center stack" style={{ padding: 24, textAlign: 'center' }}>
+        <p className="error"><b>Tài khoản đã ngừng hoạt động (đã nghỉ việc).</b></p>
+        <p className="muted">Vui lòng liên hệ quản lý nếu cần đăng nhập lại.</p>
+        <button className="btn" onClick={signOut}>Đăng xuất</button>
+      </div>
+    );
+  }
 
   // Một link duy nhất: role quyết định trang hiển thị.
   return (

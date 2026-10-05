@@ -6,33 +6,39 @@ import Fleet from './manager/Fleet';
 import Trips from './manager/Trips';
 import Fuel from './manager/Fuel';
 import Settings from './manager/Settings';
+import Accidents from './manager/Accidents';
 
-type Tab = 'fleet' | 'trips' | 'fuel' | 'settings';
+type Tab = 'fleet' | 'trips' | 'fuel' | 'accidents' | 'settings';
 
 export default function ManagerHome() {
   const lk = useLookups();
   const [tab, setTab] = useState<Tab>('fleet');
   const [pending, setPending] = useState(0);
+  const [accNew, setAccNew] = useState(0);
 
   const loadPending = useCallback(async () => {
     const { count } = await supabase.from('refuels').select('id', { count: 'exact', head: true }).eq('status', 'pending');
     setPending(count ?? 0);
+    const a = await supabase.from('accidents').select('id', { count: 'exact', head: true }).eq('status', 'new');
+    setAccNew(a.count ?? 0);
   }, []);
   useEffect(() => { loadPending(); }, [loadPending]);
 
-  const tabs: [Tab, string][] = [['fleet', '🚚 Đội xe'], ['trips', '📋 Nhật ký ca'], ['fuel', '⛽ Duyệt nhiên liệu/điện'], ['settings', '⚙️ Cài đặt']];
+  const tabs: [Tab, string][] = [['fleet', '🚚 Đội xe'], ['trips', '📋 Nhật ký ca'], ['fuel', '⛽ Duyệt nhiên liệu/điện'], ['accidents', '🚨 Tai nạn'], ['settings', '⚙️ Cài đặt']];
   return (
     <Shell title="Quản lý">
       <nav className="tabs">
         {tabs.map(([k, label]) => (
           <button key={k} className={tab === k ? 'active' : ''} onClick={() => { setTab(k); if (k === 'fleet') lk.reload(); }}>
             {label}{k === 'fuel' && pending > 0 && <span className="badge">{pending}</span>}
+            {k === 'accidents' && accNew > 0 && <span className="badge">{accNew}</span>}
           </button>
         ))}
       </nav>
       {tab === 'fleet' && <Fleet lk={lk} />}
       {tab === 'trips' && <Trips lk={lk} />}
       {tab === 'fuel' && <Fuel lk={lk} onChanged={loadPending} />}
+      {tab === 'accidents' && <Accidents lk={lk} onChanged={loadPending} />}
       {tab === 'settings' && <Settings lk={lk} />}
     </Shell>
   );

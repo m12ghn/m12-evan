@@ -66,6 +66,24 @@ export default async function handler(req, res) {
       return res.json({ ok: true });
     }
 
+    if (b.action === 'set_active') {
+      if (!b.id || typeof b.active !== 'boolean') return fail(res, 400, 'Thiếu id hoặc trạng thái');
+      if (b.id === caller.user.id) return fail(res, 400, 'Không thể tự cho mình nghỉ việc');
+      if (!b.active) {
+        const { data: open } = await admin.from('trips').select('id').eq('driver_id', b.id).eq('status', 'on_duty').limit(1);
+        if (open?.length) return fail(res, 400, 'Người này đang có ca chưa trả xe. Cần trả xe trước khi cho nghỉ việc.');
+      }
+      const { error: pErr } = await admin.from('profiles').update({ active: b.active }).eq('id', b.id);
+      if (pErr) return fail(res, 500, `Không lưu được trạng thái (${pErr.message}). Đã chạy migration-005 chưa?`);
+      // Khóa/mở khóa đăng nhập ở Supabase Auth (người đã nghỉ không đăng nhập hoặc làm mới phiên được nữa)
+      const { error } = await admin.auth.admin.updateUserById(b.id, { ban_duration: b.active ? 'none' : '876000h' });
+      if (error) {
+        await admin.from('profiles').update({ active: !b.active }).eq('id', b.id); // hoàn tác
+        return fail(res, 500, error.message);
+      }
+      return res.json({ ok: true });
+    }
+
     return fail(res, 400, 'Hành động không hợp lệ');
   } catch (e) {
     return fail(res, 500, e.message || 'Lỗi server');

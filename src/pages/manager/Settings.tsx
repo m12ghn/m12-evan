@@ -1,9 +1,10 @@
 import { Fragment, useState, type FormEvent } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Lookups } from '../../lib/useLookups';
-import type { Vehicle } from '../../lib/types';
+import { VEHICLE_STATUS, type Vehicle, type VehicleStatus } from '../../lib/types';
 import { adminUsers, usernameOf } from '../../lib/adminApi';
 import BulkVehicles from './BulkVehicles';
+import { useAuth } from '../../lib/auth';
 
 const empty = { plate: '', type: '', energy_type: 'fuel', capacity: 70, std_rate: 11, fuel_type: 'Dầu Diesel (DO)', odo: 0, energy_level: 50, status: 'ready' };
 type Form = typeof empty & { id?: string };
@@ -49,7 +50,7 @@ export default function Settings({ lk }: { lk: Lookups }) {
           <label>ODO (km)<input type="number" value={f.odo} onChange={e => set('odo', Number(e.target.value))} /></label>
           <label>Trạng thái
             <select value={f.status} onChange={e => set('status', e.target.value)}>
-              <option value="ready">Sẵn sàng</option><option value="on_duty">Đang vận hành</option><option value="maintenance">Bảo dưỡng</option>
+              {(Object.entries(VEHICLE_STATUS) as [VehicleStatus, string][]).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select></label>
         </div>
         {error && <p className="error">{error}</p>}{msg && <p style={{ color: 'var(--success)' }}>{msg}</p>}
@@ -61,10 +62,10 @@ export default function Settings({ lk }: { lk: Lookups }) {
 
       <div className="card scroll">
         <h3>Danh sách xe ({lk.vehicles.length})</h3>
-        <table><thead><tr><th>Biển số</th><th>Loại</th><th>Năng lượng</th><th>Định mức</th><th></th></tr></thead><tbody>
+        <table><thead><tr><th>Biển số</th><th>Loại</th><th>Năng lượng</th><th>Định mức</th><th>Trạng thái</th><th></th></tr></thead><tbody>
           {lk.vehicles.map(v => (
             <tr key={v.id}><td>{v.plate}</td><td>{v.type}</td><td>{v.energy_type === 'electric' ? '⚡ Điện' : '⛽ ' + v.fuel_type}</td>
-              <td>{v.std_rate}</td><td><button className="btn ghost" onClick={() => edit(v)}>Sửa</button></td></tr>
+              <td>{v.std_rate}</td><td><span className={`chip ${v.status}`}>{VEHICLE_STATUS[v.status]}</span></td><td><button className="btn ghost" onClick={() => edit(v)}>Sửa</button></td></tr>
           ))}
         </tbody></table>
       </div>
@@ -77,6 +78,8 @@ export default function Settings({ lk }: { lk: Lookups }) {
 type PersonField = 'full_name' | 'phone' | 'license';
 
 function UsersSection({ lk, savePerson }: { lk: Lookups; savePerson: (id: string, f: PersonField, v: string) => void }) {
+  const { session } = useAuth();
+  const me = session?.user.id;
   const [editId, setEditId] = useState('');
   const [uname, setUname] = useState('');
   const [pw, setPw] = useState('');
@@ -93,6 +96,11 @@ function UsersSection({ lk, savePerson }: { lk: Lookups; savePerson: (id: string
   const saveCreds = async (id: string, current: string) => {
     const username = uname.trim() && uname.trim() !== current ? uname.trim() : undefined;
     if (await run(() => adminUsers({ action: 'update', id, username, password: pw || undefined }), 'Đã cập nhật tài khoản')) { setEditId(''); setPw(''); }
+  };
+  const toggleActive = async (id: string, currentlyInactive: boolean, name: string) => {
+    const msg = currentlyInactive ? `Cho ${name} đi làm lại và đăng nhập được?` : `Cho ${name} nghỉ việc? Tài khoản sẽ bị khóa, không đăng nhập được nữa.`;
+    if (!window.confirm(msg)) return;
+    await run(() => adminUsers({ action: 'set_active', id, active: currentlyInactive }), currentlyInactive ? 'Đã cho đi làm lại' : 'Đã cho nghỉ việc (tài khoản bị khóa)');
   };
   const create = async () => {
     if (await run(() => adminUsers({ action: 'create', ...nu }), `Đã tạo tài khoản ${nu.username}`)) {
@@ -119,7 +127,7 @@ function UsersSection({ lk, savePerson }: { lk: Lookups; savePerson: (id: string
         </div>
       )}
       <div className="scroll">
-        <table><thead><tr><th>Tên đăng nhập</th><th>Họ tên</th><th>SĐT</th><th>Bằng lái</th><th>Quyền</th><th></th></tr></thead><tbody>
+        <table><thead><tr><th>Tên đăng nhập</th><th>Họ tên</th><th>SĐT</th><th>Bằng lái</th><th>Quyền</th><th>Trạng thái</th><th></th></tr></thead><tbody>
           {lk.people.map(p => {
             const cur = usernameOf(p.email);
             return (
@@ -130,10 +138,13 @@ function UsersSection({ lk, savePerson }: { lk: Lookups; savePerson: (id: string
                     <td key={k}><input defaultValue={p[k] ?? ''} onBlur={e => e.target.value !== (p[k] ?? '') && savePerson(p.id, k, e.target.value)} /></td>
                   ))}
                   <td><span className="chip">{p.role === 'manager' ? 'Quản lý' : 'Tài xế'}</span></td>
-                  <td><button className="btn ghost" onClick={() => { setEditId(editId === p.id ? '' : p.id); setUname(cur); setPw(''); setError(''); setMsg(''); }}>Đổi TK / MK</button></td>
+                  <td><span className={`chip ${p.active === false ? 'inactive' : 'on_duty'}`}>{p.active === false ? 'Đã nghỉ' : 'Còn làm'}</span></td>
+                  <td><button className="btn ghost" onClick={() => { setEditId(editId === p.id ? '' : p.id); setUname(cur); setPw(''); setError(''); setMsg(''); }}>Đổi TK / MK</button>{' '}
+                    <button className="btn ghost" disabled={busy || p.id === me} onClick={() => toggleActive(p.id, p.active === false, p.full_name ?? cur)}>
+                      {p.active === false ? 'Cho đi làm lại' : 'Cho nghỉ việc'}</button></td>
                 </tr>
                 {editId === p.id && (
-                  <tr><td colSpan={6}><div className="row" style={{ flexWrap: 'wrap' }}>
+                  <tr><td colSpan={7}><div className="row" style={{ flexWrap: 'wrap' }}>
                     <label className="stack">Tên đăng nhập mới<input value={uname} onChange={e => setUname(e.target.value)} /></label>
                     <label className="stack">Mật khẩu mới (bỏ trống = giữ nguyên)<input type="text" value={pw} onChange={e => setPw(e.target.value)} /></label>
                     <button className="btn" disabled={busy} onClick={() => saveCreds(p.id, cur)}>{busy ? 'Đang lưu…' : 'Lưu'}</button>

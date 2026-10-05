@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { downloadXlsx, readXlsxRows } from '../../lib/excel';
 import type { Lookups } from '../../lib/useLookups';
+import type { VehicleStatus } from '../../lib/types';
 
 const HEADERS = ['Biển số', 'Loại xe', 'Năng lượng (Xăng/Dầu/Điện)', 'Loại nhiên liệu', 'Dung tích bình (L) / Pin (kWh)', 'Định mức /100km', 'ODO (km)', 'Mức NL/pin (%)', 'Trạng thái'];
 // Từ khóa nhận diện cột (không phân biệt hoa thường)
 const KEYS = { plate: 'biển số', type: 'loại xe', energy: 'năng lượng', fuel: 'loại nhiên liệu', capacity: 'dung tích', rate: 'định mức', odo: 'odo', level: 'mức nl', status: 'trạng thái' } as const;
-const STATUS: Record<string, 'ready' | 'on_duty' | 'maintenance'> = { 'sẵn sàng': 'ready', 'đang vận hành': 'on_duty', 'bảo dưỡng': 'maintenance' };
+const STATUS: Record<string, VehicleStatus> = { 'sẵn sàng': 'ready', 'đang vận hành': 'on_duty', 'bảo dưỡng': 'maintenance', 'ngưng hoạt động': 'inactive', 'đang sửa chữa tai nạn': 'repair' };
 
-interface Parsed { plate: string; type: string; energy_type: 'fuel' | 'electric'; fuel_type: string; capacity: number; std_rate: number; odo: number; energy_level: number; status: 'ready' | 'on_duty' | 'maintenance' }
+interface Parsed { plate: string; type: string; energy_type: 'fuel' | 'electric'; fuel_type: string; capacity: number; std_rate: number; odo: number; energy_level: number; status: VehicleStatus }
 
 export async function downloadVehicleTemplate() {
   await downloadXlsx('mau-them-xe.xlsx', [
@@ -25,7 +26,7 @@ export async function downloadVehicleTemplate() {
       ['• Dung tích bình (lít) hoặc dung lượng pin (kWh): bắt buộc, là số > 0.'],
       ['• Định mức: lít/100km hoặc kWh/100km, bắt buộc, là số > 0.'],
       ['• ODO (km): để trống = 0. Mức NL/pin: 0–100, để trống = 50.'],
-      ['• Trạng thái: "Sẵn sàng", "Đang vận hành" hoặc "Bảo dưỡng" (để trống = Sẵn sàng).'],
+      ['• Trạng thái: "Sẵn sàng", "Đang vận hành", "Bảo dưỡng", "Ngưng hoạt động" hoặc "Đang sửa chữa tai nạn" (để trống = Sẵn sàng).'],
       ['• Biển số ĐÃ có trong hệ thống: chỉ cập nhật loại xe, năng lượng, dung tích, định mức (giữ nguyên ODO/mức NL/trạng thái hiện tại).'],
     ] },
   ]);

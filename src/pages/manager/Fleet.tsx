@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import type { Lookups } from '../../lib/useLookups';
+import { VEHICLE_STATUS, type VehicleStatus } from '../../lib/types';
 
-const STATUS = { ready: 'Sẵn sàng', on_duty: 'Đang vận hành', maintenance: 'Bảo dưỡng' } as const;
+const STATUS = VEHICLE_STATUS;
 
 export default function Fleet({ lk }: { lk: Lookups }) {
-  const [filter, setFilter] = useState<'all' | keyof typeof STATUS>('all');
+  const [filter, setFilter] = useState<'all' | VehicleStatus>('all');
   const [q, setQ] = useState('');
-  const count = (s: keyof typeof STATUS) => lk.vehicles.filter(v => v.status === s).length;
+  const count = (s: VehicleStatus) => lk.vehicles.filter(v => v.status === s).length;
   const list = lk.vehicles.filter(v => (filter === 'all' || v.status === filter) &&
     (!q || `${v.plate} ${v.type} ${lk.person(v.driver_id)}`.toLowerCase().includes(q.toLowerCase())));
 
@@ -16,11 +17,12 @@ export default function Fleet({ lk }: { lk: Lookups }) {
         <div className="card"><b>{lk.vehicles.length}</b><span>Tổng xe</span></div>
         <div className="card"><b>{count('on_duty')}</b><span>Đang vận hành</span></div>
         <div className="card"><b>{count('ready')}</b><span>Sẵn sàng</span></div>
-        <div className="card"><b>{count('maintenance')}</b><span>Bảo dưỡng</span></div>
+        <div className="card"><b>{count('maintenance') + count('repair')}</b><span>Bảo dưỡng / sửa chữa</span></div>
+        <div className="card"><b>{count('inactive')}</b><span>Ngưng hoạt động</span></div>
       </div>
       <div className="row" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
         <input placeholder="Tìm biển số, loại xe, tài xế…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
-        {(['all', 'on_duty', 'ready', 'maintenance'] as const).map(f => (
+        {(['all', 'on_duty', 'ready', 'maintenance', 'repair', 'inactive'] as const).map(f => (
           <button key={f} className={`btn ${filter === f ? '' : 'ghost'}`} onClick={() => setFilter(f)}>{f === 'all' ? 'Tất cả' : STATUS[f]}</button>
         ))}
       </div>

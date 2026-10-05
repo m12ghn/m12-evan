@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 // trong jsonb {taplo, front, back, left, right}. Khi hiển thị thì tạo signed URL (hiệu lực 7 ngày).
 export const BUCKET = 'photos';
 export const SIGNED_URL_TTL = 60 * 60 * 24 * 7;
-export type PhotoFolder = 'checkin' | 'checkout' | 'refuel';
+export type PhotoFolder = 'checkin' | 'checkout' | 'refuel' | 'accident';
 export type PhotoMap = Record<string, string>;
 
 // Đường dẫn: <user_id>/<folder>/<timestamp>-<uuid>.jpg (thư mục đầu = user_id để khớp RLS)

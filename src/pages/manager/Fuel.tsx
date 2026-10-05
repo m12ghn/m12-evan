@@ -8,6 +8,7 @@ interface Row {
   id: string; trip_id: string; driver_id: string; created_at: string; energy_type: 'fuel' | 'electric';
   fuel_type: string | null; odo_at_refuel: number; quantity: number; unit_price: number; total_amount: number;
   station: string | null; photo_pump: string | null; photo_receipt: string | null; photos: Record<string, string> | null;
+  battery_before: number | null; battery_after: number | null; charge_minutes: number | null;
   status: 'pending' | 'approved' | 'rejected'; manager_note: string | null;
 }
 const money = (n: number) => Math.round(n).toLocaleString('vi-VN') + ' đ';
@@ -61,7 +62,11 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
               <span className="chip">{STATUS[r.status]}</span>
             </div>
             <p>
-              <b>{r.quantity} {unit}</b> × {r.unit_price.toLocaleString('vi-VN')} đ = <b>{money(r.total_amount)}</b>
+              {r.energy_type === 'electric' && r.battery_before != null ? (
+                <>Pin <b>{r.battery_before}% → {r.battery_after}%</b> · <b>{r.quantity} kWh</b> · sạc <b>{r.charge_minutes} phút</b> · thành tiền <b>{money(r.total_amount)}</b></>
+              ) : (
+                <><b>{r.quantity} {unit}</b> × {r.unit_price.toLocaleString('vi-VN')} đ = <b>{money(r.total_amount)}</b></>
+              )}
               {over && <span className="error"> ⚠️ Vượt dung tích bình/pin ({v!.capacity} {unit})</span>}
             </p>
             <p className="muted">{new Date(r.created_at).toLocaleString('vi-VN')} · ODO {r.odo_at_refuel.toLocaleString()} km · {r.station || 'Chưa ghi trạm'} · {r.fuel_type}</p>

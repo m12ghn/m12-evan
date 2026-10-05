@@ -101,3 +101,9 @@ button.photo { background: none; font: inherit; width: 100%; }
 .shutter:disabled { opacity: .5; }
 .sheet-backdrop { position: fixed; inset: 0; z-index: 90; background: #0007; display: flex; align-items: flex-end; justify-content: center; }
 .sheet { background: var(--white); width: 100%; max-width: 480px; padding: 16px; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; gap: 10px; }
+.chip.inactive { background: #ECEFF1; color: #546E7A; }
+.chip.repair { background: #FFEBEE; color: var(--error); }
+.thumbs .rm { position: relative; }
+.thumb-del { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--error); color: #fff; line-height: 1; cursor: pointer; }
+.thumb-wrap { position: relative; width: 110px; }
+.thumb-wrap img { width: 110px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }

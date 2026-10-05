@@ -7,7 +7,14 @@ export interface Profile {
   license: string | null;
   email: string | null;
   role: Role;
+  active?: boolean; // Còn làm / Đã nghỉ (thiếu cột = coi như còn làm)
 }
+
+export type VehicleStatus = 'ready' | 'on_duty' | 'maintenance' | 'inactive' | 'repair';
+export const VEHICLE_STATUS: Record<VehicleStatus, string> = {
+  ready: 'Sẵn sàng', on_duty: 'Đang vận hành', maintenance: 'Bảo dưỡng',
+  inactive: 'Ngưng hoạt động', repair: 'Đang sửa chữa tai nạn',
+};
 
 export interface Vehicle {
   id: string;
@@ -19,7 +26,7 @@ export interface Vehicle {
   fuel_type: string;
   odo: number;
   energy_level: number;
-  status: 'ready' | 'on_duty' | 'maintenance';
+  status: VehicleStatus;
   driver_id: string | null;
 }
 
@@ -41,6 +48,9 @@ export interface Refuel {
   total_amount: number;
   energy_type: 'fuel' | 'electric';
   odo_at_refuel: number;
+  battery_before: number | null;
+  battery_after: number | null;
+  charge_minutes: number | null;
   status: 'pending' | 'approved' | 'rejected';
 }
 

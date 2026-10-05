@@ -4,6 +4,11 @@
 --   Tài xế: 10001 (MSNV)           / Driver@12345
 -- XÓA hoặc đổi mật khẩu trước khi dùng thật.
 
+-- Tạo lại hồ sơ cho các tài khoản đã tồn tại (cần khi chạy lại script sau khi bảng profiles bị tạo mới)
+insert into public.profiles (id, full_name, email)
+select id, raw_user_meta_data->>'full_name', email from auth.users
+on conflict (id) do nothing;
+
 do $$
 declare
   u record;

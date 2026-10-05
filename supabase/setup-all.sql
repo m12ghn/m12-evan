@@ -1,6 +1,7 @@
 -- SETUP MỘT LẦN: schema + xe mẫu + 2 tài khoản test. Dán toàn bộ vào Supabase → SQL Editor → Run.
 -- CẢNH BÁO: script xóa & tạo lại các bảng của app (profiles, vehicles, trips, refuels) nên chỉ dùng khi mới cài đặt.
 drop trigger if exists on_auth_user_created on auth.users;
+drop table if exists public.accidents cascade;
 drop table if exists public.refuels cascade;
 drop table if exists public.trips cascade;
 drop table if exists public.vehicles cascade;
@@ -18,6 +19,7 @@ create table public.profiles (
   phone text,
   license text,
   role text not null default 'driver' check (role in ('manager','driver')),
+  active boolean not null default true,   -- Còn làm / Đã nghỉ
   created_at timestamptz not null default now()
 );
 
@@ -60,7 +62,7 @@ create table public.vehicles (
   fuel_type text not null default 'Dầu Diesel (DO)',  -- loại nhiên liệu; xe điện: 'Điện'
   odo integer not null default 0,
   energy_level integer not null default 50 check (energy_level between 0 and 100),  -- % bình / % pin
-  status text not null default 'ready' check (status in ('ready','on_duty','maintenance')),
+  status text not null default 'ready' check (status in ('ready','on_duty','maintenance','inactive','repair')),
   driver_id uuid references public.profiles(id)
 );
 
@@ -99,7 +101,10 @@ create table public.refuels (
   odo_at_refuel integer not null,
   quantity numeric not null check (quantity > 0),   -- lít hoặc kWh
   unit_price numeric not null default 0,            -- đ/lít hoặc đ/kWh
-  total_amount numeric generated always as (quantity * unit_price) stored,
+  total_amount numeric not null default 0,   -- xe điện nhập trực tiếp; xăng/dầu = số lượng × đơn giá
+  battery_before int check (battery_before between 0 and 100),   -- xe điện: % pin trước khi sạc
+  battery_after  int check (battery_after  between 0 and 100),   -- xe điện: % pin sau khi sạc
+  charge_minutes int check (charge_minutes > 0),                 -- xe điện: thời gian sạc (phút)
   station text,             -- trạm xăng / trạm sạc
   photo_pump text,          -- ảnh cột bơm / màn hình trạm sạc
   photo_receipt text,
@@ -107,6 +112,38 @@ create table public.refuels (
   status text not null default 'pending' check (status in ('pending','approved','rejected')),
   manager_note text
 );
+
+create or replace function public.refuel_total() returns trigger language plpgsql as $$
+begin
+  if new.total_amount is null or new.total_amount = 0 then
+    new.total_amount := round(new.quantity * new.unit_price);
+  end if;
+  return new;
+end $$;
+create trigger refuel_total before insert on public.refuels for each row execute function public.refuel_total();
+
+-- (4) Báo cáo tai nạn (không cần ca đang chạy)
+create table public.accidents (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  driver_id uuid not null references public.profiles(id),
+  vehicle_id uuid references public.vehicles(id),
+  trip_id uuid references public.trips(id),
+  location text not null,
+  description text not null,
+  photos jsonb not null default '[]'::jsonb,   -- mảng đường dẫn ảnh trong Storage (tối đa 6)
+  status text not null default 'new' check (status in ('new','handling','done')),
+  manager_note text,
+  check (jsonb_typeof(photos) = 'array' and jsonb_array_length(photos) <= 6)
+);
+alter table public.accidents enable row level security;
+create policy "accidents: tài xế tạo báo cáo của mình" on public.accidents for insert with check (
+  driver_id = auth.uid() and status = 'new'
+  and (trip_id is null or exists (select 1 from public.trips t where t.id = trip_id and t.driver_id = auth.uid()))
+);
+create policy "accidents: đọc của mình hoặc manager" on public.accidents for select using (driver_id = auth.uid() or public.is_manager());
+create policy "accidents: manager cập nhật" on public.accidents for update using (public.is_manager());
+
 
 -- 5. RLS -----------------------------------------------------------------------
 alter table profiles enable row level security;
@@ -146,6 +183,7 @@ language plpgsql security definer set search_path = public as $$
 declare v public.vehicles; tid uuid;
 begin
   if auth.uid() is null then raise exception 'Chưa đăng nhập'; end if;
+  if not exists (select 1 from profiles where id = auth.uid() and active) then raise exception 'Tài khoản đã ngừng hoạt động'; end if;
   if p_odo is null or p_odo < 0 then raise exception 'ODO không hợp lệ'; end if;
   if p_level is null or p_level < 0 or p_level > 100 then raise exception 'Mức nhiên liệu/pin phải từ 0–100'; end if;
   if exists (select 1 from trips where driver_id = auth.uid() and status = 'on_duty') then
@@ -225,6 +263,11 @@ insert into vehicles (plate, type, energy_type, capacity, std_rate, fuel_type, o
 --   Admin : admin@fleetops.local   / Admin@12345
 --   Tài xế: 10001 (MSNV)           / Driver@12345
 -- XÓA hoặc đổi mật khẩu trước khi dùng thật.
+
+-- Tạo lại hồ sơ cho các tài khoản đã tồn tại (cần khi chạy lại script sau khi bảng profiles bị tạo mới)
+insert into public.profiles (id, full_name, email)
+select id, raw_user_meta_data->>'full_name', email from auth.users
+on conflict (id) do nothing;
 
 do $$
 declare
