@@ -3,7 +3,10 @@ import { signPhotoMap, type PhotoMap } from '../lib/storage';
 
 export default function SignedPhotos({ photos, labels }: { photos: PhotoMap | null; labels: Record<string, string> }) {
   const [urls, setUrls] = useState<PhotoMap>({});
-  useEffect(() => { signPhotoMap(photos).then(setUrls); }, [photos]);
+  // Khóa theo nội dung (không theo tham chiếu) để không ký lại URL và nháy ảnh mỗi lần trang render lại
+  const key = JSON.stringify(photos);
+  useEffect(() => { let alive = true; signPhotoMap(photos).then(u => alive && setUrls(u)); return () => { alive = false; }; // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
   const keys = Object.keys(labels).filter(k => photos?.[k]);
   if (!keys.length) return <p className="muted">Không có ảnh</p>;
   return (
