@@ -4,6 +4,18 @@
     "items": [
       {
         "type": "change",
+        "scope": "all",
+        "title": "Telegram: database tự gửi tin ngay khi có dữ liệu mới",
+        "detail": "Thay vì chờ điện thoại tài xế báo lại, database tự kích hoạt (trigger) gửi tin ngay lúc ca/phiếu được lưu, kể cả khi điện thoại mất mạng. Có lịch quét bù tự động mỗi 5 phút cho tin bị lỡ. Cài đặt ở Cài đặt → Thông báo Telegram → Gửi tự động (mã bí mật, kiểm tra kết nối). Mỗi sự kiện vẫn chỉ gửi một lần."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 009 (trigger Telegram)",
+        "detail": "Trigger trên bảng ca và phiếu dùng pg_net gọi máy chủ; bảng cấu hình riêng tư (private_config) chứa địa chỉ và mã bí mật, không ai đọc được qua app; pg_cron quét bù mỗi 5 phút."
+      },
+      {
+        "type": "change",
         "scope": "manager",
         "title": "Telegram: hỗ trợ nhóm có chủ đề (topic)",
         "detail": "Chat ID nhập dạng -100…_mã_topic (vd -1003936059980_8) để gửi vào đúng chủ đề; mỗi loại tin (vào ca, sạc điện, kết thúc ca) vào một chủ đề riêng."

@@ -5,6 +5,7 @@ import { telegramApi } from '../../lib/notify';
 interface Cfg { enabled: boolean; default_chat: string; checkin_chat: string; refuel_chat: string; checkout_chat: string }
 interface Log { id: number; at: string; event: string; chat_id: string | null; status: 'pending' | 'sent' | 'failed'; error: string | null }
 interface Status { tokenConfigured: boolean; bot?: string; tokenError?: string }
+interface Hook { configured: boolean; url: string | null; pg_net: boolean; cron: boolean }
 
 const EMPTY: Cfg = { enabled: false, default_chat: '', checkin_chat: '', refuel_chat: '', checkout_chat: '' };
 const EVENT: Record<string, string> = { checkin: 'Vào ca', refuel: 'Sạc điện / đổ nhiên liệu', checkout: 'Kết thúc ca', test: 'Tin thử' };
@@ -14,6 +15,8 @@ const validChat = (s: string) => s === '' || /^-?\d{5,}(_\d+)?$/.test(s) || /^@\
 export default function TelegramSettings() {
   const [cfg, setCfg] = useState<Cfg>(EMPTY);
   const [status, setStatus] = useState<Status | null>(null);
+  const [hook, setHook] = useState<Hook | null>(null);
+  const [hookSecret, setHookSecret] = useState('');
   const [logs, setLogs] = useState<Log[]>([]);
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
@@ -24,12 +27,17 @@ export default function TelegramSettings() {
     setLogs((data as Log[]) ?? []);
   }, []);
 
+  const loadHook = useCallback(async () => {
+    const { data } = await supabase.rpc('telegram_hook_status');
+    setHook((data as Hook | null) ?? null);
+  }, []);
+
   useEffect(() => {
     supabase.from('app_settings').select('value').eq('key', 'telegram').maybeSingle()
       .then(({ data }) => setCfg({ ...EMPTY, ...((data?.value as Partial<Cfg>) ?? {}) }));
     telegramApi<Status>({ action: 'status' }).then(setStatus).catch(e => setStatus({ tokenConfigured: false, tokenError: e.message }));
-    loadLogs();
-  }, [loadLogs]);
+    loadLogs(); loadHook();
+  }, [loadLogs, loadHook]);
 
   const set = (k: keyof Cfg, v: string | boolean) => setCfg({ ...cfg, [k]: v });
   const wrap = async (name: string, fn: () => Promise<string | void>) => {
@@ -60,6 +68,26 @@ export default function TelegramSettings() {
     }
     await loadLogs();
     return `Quét 48 giờ gần nhất: gửi bù ${ok} tin${failed ? `, lỗi ${failed}` : ''}${remaining ? `, còn ${remaining} chưa gửi (bấm lại)` : ''}.`;
+  });
+  const hookUrl = `${window.location.origin}/api/telegram-hook`;
+  const genSecret = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    setHookSecret(Array.from(bytes, b => chars[b % chars.length]).join(''));
+  };
+  const saveHook = () => wrap('hook', async () => {
+    const { error: e } = await supabase.rpc('set_telegram_hook', { p_url: hookUrl, p_secret: hookSecret });
+    if (e) throw e;
+    await loadHook();
+    return 'Đã lưu kết nối tự động. Nhớ đặt ĐÚNG mã này vào biến TELEGRAM_HOOK_SECRET trên Vercel (rồi Redeploy), sau đó bấm "Kiểm tra kết nối".';
+  });
+  const pingHook = () => wrap('ping', async () => {
+    const r = await fetch(hookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${hookSecret}` }, body: JSON.stringify({ action: 'ping' }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 503) throw new Error('Vercel chưa có biến TELEGRAM_HOOK_SECRET (hoặc chưa Redeploy).');
+    if (r.status === 401) throw new Error('Mã bí mật không khớp với biến TELEGRAM_HOOK_SECRET trên Vercel.');
+    if (!r.ok) throw new Error((j as { error?: string }).error ?? `Lỗi ${r.status}`);
+    return '✓ Kết nối tốt: máy chủ nhận đúng mã bí mật.';
   });
   const resend = (id: number) => wrap('resend', async () => {
     const r = await telegramApi<{ ok?: boolean; failed?: boolean; error?: string }>({ action: 'resend', log_id: id });
@@ -98,6 +126,31 @@ export default function TelegramSettings() {
         <button className="btn ghost" disabled={busy !== ''} onClick={sweep}>{busy === 'sweep' ? 'Đang gửi bù…' : '↻ Quét & gửi bù (48 giờ qua)'}</button>
       </div>
       {error && <p className="error">{error}</p>}{msg && <p style={{ color: 'var(--success)' }}>{msg}</p>}
+
+      <h4>⚡ Gửi tự động ngay khi có dữ liệu mới</h4>
+      {hook === null ? <p className="muted">Đang kiểm tra…</p> : (
+        <>
+          {hook.configured
+            ? <p style={{ color: 'var(--success)' }}>✓ Đã bật: database tự báo cho máy chủ ngay khi tài xế lưu ca / phiếu (không phụ thuộc điện thoại tài xế). Địa chỉ: <code>{hook.url}</code></p>
+            : <p className="error">Chưa bật. Làm 3 bước bên dưới để database tự gửi tin ngay khi có dữ liệu mới. (Trong lúc chưa bật, tin vẫn được gửi từ điện thoại tài xế.)</p>}
+          {!hook.pg_net && <p className="error">⚠️ Extension <b>pg_net</b> chưa bật: vào Supabase → Database → Extensions → bật pg_net.</p>}
+          {hook.configured && !hook.cron && <p className="muted">Lưu ý: chưa bật <b>pg_cron</b> nên chưa có quét bù tự động mỗi 5 phút (tin vẫn gửi ngay nhờ trigger). Bật tại Database → Extensions → pg_cron rồi chạy lại migration 009.</p>}
+          <ol className="muted" style={{ paddingLeft: 20, margin: 0 }}>
+            <li>Bấm <b>Tạo mã ngẫu nhiên</b>, sao chép mã.</li>
+            <li>Vercel → Settings → Environment Variables: thêm <code>TELEGRAM_HOOK_SECRET</code> = mã đó (Sensitive) → Redeploy.</li>
+            <li>Quay lại đây bấm <b>Lưu kết nối tự động</b>, rồi <b>Kiểm tra kết nối</b>.</li>
+          </ol>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            <input value={hookSecret} placeholder="Mã bí mật (tối thiểu 16 ký tự)" onChange={e => setHookSecret(e.target.value.trim())} style={{ flex: 1, minWidth: 220 }} />
+            <button className="btn ghost" disabled={busy !== ''} onClick={genSecret}>Tạo mã ngẫu nhiên</button>
+            <button className="btn ghost" disabled={!hookSecret} onClick={() => navigator.clipboard?.writeText(hookSecret)}>Sao chép</button>
+          </div>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            <button className="btn" disabled={busy !== '' || hookSecret.length < 16} onClick={saveHook}>{busy === 'hook' ? 'Đang lưu…' : 'Lưu kết nối tự động'}</button>
+            <button className="btn ghost" disabled={busy !== '' || hookSecret.length < 16} onClick={pingHook}>{busy === 'ping' ? 'Đang kiểm tra…' : 'Kiểm tra kết nối'}</button>
+          </div>
+        </>
+      )}
 
       <h4>Tin gần đây</h4>
       <div className="scroll"><table>

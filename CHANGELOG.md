@@ -16,6 +16,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🔧 Chỉnh sửa
 
+- **Telegram: database tự gửi tin ngay khi có dữ liệu mới** _(Cả hai)_ — Thay vì chờ điện thoại tài xế báo lại, database tự kích hoạt (trigger) gửi tin ngay lúc ca/phiếu được lưu, kể cả khi điện thoại mất mạng. Có lịch quét bù tự động mỗi 5 phút cho tin bị lỡ. Cài đặt ở Cài đặt → Thông báo Telegram → Gửi tự động (mã bí mật, kiểm tra kết nối). Mỗi sự kiện vẫn chỉ gửi một lần.
 - **Telegram: hỗ trợ nhóm có chủ đề (topic)** _(Quản lý)_ — Chat ID nhập dạng -100…_mã_topic (vd -1003936059980_8) để gửi vào đúng chủ đề; mỗi loại tin (vào ca, sạc điện, kết thúc ca) vào một chủ đề riêng.
 - **Tải ảnh nhanh và chắc hơn trên mạng yếu** _(Tài xế)_ — Tải tối đa 3 ảnh cùng lúc (trước đây lần lượt từng ảnh), tự thử lại khi lỗi mạng, hiện tiến độ "Đang tải ảnh 2/5…", gửi lại không tải trùng ảnh. Áp dụng cho chụp đầu ca, cuối ca, cấp nhiên liệu/điện và báo cáo tai nạn.
 - **Chụp đầu ca: hiện ODO chốt ca trước và cảnh báo khi số lệch** _(Tài xế)_ — Cảnh báo đỏ nếu ODO nhập thấp hơn ODO ca trước hoặc cao hơn (kèm số km chênh). Ô ODO chỉ nhận chữ số.
@@ -33,6 +34,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### ⚙️ Hệ thống
 
+- **Cơ sở dữ liệu: migration 009 (trigger Telegram)** _(Cả hai)_ — Trigger trên bảng ca và phiếu dùng pg_net gọi máy chủ; bảng cấu hình riêng tư (private_config) chứa địa chỉ và mã bí mật, không ai đọc được qua app; pg_cron quét bù mỗi 5 phút.
 - **Cơ sở dữ liệu: migration 008 (Telegram)** _(Cả hai)_ — Thêm bảng cài đặt chung (app_settings) và nhật ký gửi Telegram (telegram_log). Token bot không lưu trong cơ sở dữ liệu mà ở biến môi trường TELEGRAM_BOT_TOKEN trên Vercel.
 - **Cơ sở dữ liệu: migration 007 (hiệu năng + bảo mật)** _(Cả hai)_ — Thêm chỉ mục cho các truy vấn thường dùng; viết lại chính sách phân quyền theo khuyến nghị hiệu năng của Supabase; người dùng không còn tự đổi được quyền, trạng thái làm việc hay tên đăng nhập của mình.
 - **Cập nhật cơ sở dữ liệu: migration 004, 005, 006** _(Cả hai)_ — 004: nhiều ảnh cho phiếu nhiên liệu/điện. 005: phiếu sạc điện, trạng thái nghỉ việc, trạng thái xe mới, bảng báo cáo tai nạn. 006: nhật ký thao tác.
