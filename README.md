@@ -49,3 +49,7 @@ Mẫu tin nằm trong `api/_telegram.js` (hàm `buildMessage`).
 
 ### Gửi tự động từ database (khuyến nghị)
 Chạy `supabase/migration-009-telegram-trigger.sql` (cần bật extension `pg_net`, và `pg_cron` cho quét bù). Rồi trong app: Cài đặt → Thông báo Telegram → ⚡ Gửi tự động: tạo mã bí mật, đặt vào biến Vercel `TELEGRAM_HOOK_SECRET`, Lưu và Kiểm tra kết nối. Từ đó mỗi ca/phiếu được lưu là database tự gọi `/api/telegram-hook` để gửi tin; mỗi sự kiện chỉ gửi một lần.
+
+## Phân quyền
+- **driver**: trang tài xế. **manager** (admin): đội xe, nhật ký ca, duyệt, tai nạn, người dùng, nhật ký thao tác (không thấy cấu hình Telegram/bí mật/cập nhật app).
+- **dev**: toàn quyền, thêm Cài đặt Telegram, tab Cập nhật. Chạy `migration-013-dev-role.sql`, tạo tài khoản rồi nâng: `update public.profiles set role='dev' where email='dev@fleetops.local';`

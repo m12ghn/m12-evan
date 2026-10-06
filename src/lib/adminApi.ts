@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 type Payload =
-  | { action: 'create'; username: string; password: string; full_name?: string; phone?: string; license?: string; role: 'manager' | 'driver' }
+  | { action: 'create'; username: string; password: string; full_name?: string; phone?: string; license?: string; role: 'manager' | 'driver' | 'dev' }
   | { action: 'update'; id: string; username?: string; password?: string }
   | { action: 'set_active'; id: string; active: boolean };
 

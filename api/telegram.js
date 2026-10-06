@@ -19,7 +19,8 @@ export default async function handler(req, res) {
   if (!caller?.user) return fail(res, 401, 'Chưa đăng nhập');
   const { data: me } = await admin.from('profiles').select('role, active').eq('id', caller.user.id).single();
   if (!me || me.active === false) return fail(res, 403, 'Tài khoản không hoạt động');
-  const isManager = me.role === 'manager';
+  const isManager = me.role === 'manager' || me.role === 'dev';
+  const isDev = me.role === 'dev';
 
   const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
   const ctx = { admin, token, uid: caller.user.id, isManager };
@@ -31,8 +32,8 @@ export default async function handler(req, res) {
       return res.json(await deliver(ctx, b.event, String(b.id)));
     }
 
-    // ---- Các thao tác sau chỉ dành cho quản lý
-    if (!isManager) return fail(res, 403, 'Chỉ quản lý mới có quyền này');
+    // ---- Các thao tác sau (cấu hình, gửi thử, gửi lại, quét bù) chỉ dành cho dev
+    if (!isDev) return fail(res, 403, 'Chỉ dev mới có quyền này');
 
     if (b.action === 'status') {
       if (!token) return res.json({ tokenConfigured: false });

@@ -23,13 +23,14 @@ export default function App() {
     );
   }
 
+  const staff = profile.role === 'manager' || profile.role === 'dev'; // dev = quản lý + quyền cấu hình
   // Một link duy nhất: role quyết định trang hiển thị.
   return (
     <Suspense fallback={<div className="center">Đang tải…</div>}>
     <Routes>
-      <Route path="/manager/*" element={profile.role === 'manager' ? <ManagerHome /> : <Navigate to="/" replace />} />
+      <Route path="/manager/*" element={staff ? <ManagerHome /> : <Navigate to="/" replace />} />
       <Route path="/driver/*" element={profile.role === 'driver' ? <DriverHome /> : <Navigate to="/" replace />} />
-      <Route path="*" element={<Navigate to={profile.role === 'manager' ? '/manager' : '/driver'} replace />} />
+      <Route path="*" element={<Navigate to={staff ? '/manager' : '/driver'} replace />} />
     </Routes>
     </Suspense>
   );

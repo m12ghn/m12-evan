@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Shell from '../components/Shell';
+import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { useLookups } from '../lib/useLookups';
 import Fleet from './manager/Fleet';
@@ -14,6 +15,7 @@ type Tab = 'fleet' | 'trips' | 'fuel' | 'accidents' | 'audit' | 'changelog' | 's
 
 export default function ManagerHome() {
   const lk = useLookups();
+  const isDev = useAuth().profile?.role === 'dev';
   const [tab, setTab] = useState<Tab>('fleet');
   const [pending, setPending] = useState(0);
   const [accNew, setAccNew] = useState(0);
@@ -26,9 +28,9 @@ export default function ManagerHome() {
   }, []);
   useEffect(() => { loadPending(); }, [loadPending]);
 
-  const tabs: [Tab, string][] = [['fleet', '🚚 Đội xe'], ['trips', '📋 Nhật ký ca'], ['fuel', '⛽ Duyệt nhiên liệu/điện'], ['accidents', '🚨 Tai nạn'], ['audit', '🧾 Nhật ký'], ['changelog', '📝 Cập nhật'], ['settings', '⚙️ Cài đặt']];
+  const tabs: [Tab, string][] = [['fleet', '🚚 Đội xe'], ['trips', '📋 Nhật ký ca'], ['fuel', '⛽ Duyệt nhiên liệu/điện'], ['accidents', '🚨 Tai nạn'], ['audit', '🧾 Nhật ký'], ...(isDev ? [['changelog', '📝 Cập nhật'] as [Tab, string]] : []), ['settings', '⚙️ Cài đặt']];
   return (
-    <Shell title="Quản lý">
+    <Shell title={isDev ? 'Dev' : 'Quản lý'}>
       <nav className="tabs">
         {tabs.map(([k, label]) => (
           <button key={k} className={tab === k ? 'active' : ''} onClick={() => { setTab(k); if (k === 'fleet') lk.reload(); }}>
@@ -42,8 +44,8 @@ export default function ManagerHome() {
       {tab === 'fuel' && <Fuel lk={lk} onChanged={loadPending} />}
       {tab === 'accidents' && <Accidents lk={lk} onChanged={loadPending} />}
       {tab === 'audit' && <AuditLog lk={lk} />}
-      {tab === 'changelog' && <Changelog />}
-      {tab === 'settings' && <Settings lk={lk} />}
+      {tab === 'changelog' && isDev && <Changelog />}
+      {tab === 'settings' && <Settings lk={lk} isDev={isDev} />}
     </Shell>
   );
 }

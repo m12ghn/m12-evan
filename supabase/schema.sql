@@ -7,15 +7,57 @@ create table public.profiles (
   email text,
   phone text,
   license text,
-  role text not null default 'driver' check (role in ('manager','driver')),
+  role text not null default 'driver' check (role in ('manager','driver','dev')),
   active boolean not null default true,   -- Còn làm / Đã nghỉ
   created_at timestamptz not null default now()
 );
 
 create or replace function public.is_manager() returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from profiles where id = auth.uid() and role = 'manager');
+  select exists (select 1 from profiles where id = auth.uid() and role in ('manager','dev'));
 $$;
+create or replace function public.is_dev() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from profiles where id = auth.uid() and role = 'dev');
+$$;
+
+-- Chỉ dev được cấp quyền dev hoặc sửa tài khoản dev khác
+create or replace function public.protect_role() returns trigger
+language plpgsql as $$
+begin
+  -- auth.uid() null = chạy từ SQL Editor / service role (quản trị hệ thống) → cho phép
+  if auth.uid() is not null and not public.is_dev() then
+    if new.role = 'dev' and old.role is distinct from 'dev' then raise exception 'Chỉ dev mới được cấp quyền dev'; end if;
+    if old.role = 'dev' and old.id <> auth.uid() then raise exception 'Không được sửa tài khoản dev'; end if;
+  end if;
+  if auth.uid() is not null and not public.is_manager() then
+    if new.role is distinct from old.role then raise exception 'Không được đổi role'; end if;
+    if new.active is distinct from old.active then raise exception 'Không được đổi trạng thái làm việc'; end if;
+    if new.email is distinct from old.email then raise exception 'Không được đổi tên đăng nhập'; end if;
+  end if;
+  return new;
+end $$;
+create or replace function public.is_dev() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from profiles where id = auth.uid() and role = 'dev');
+$$;
+
+-- Chỉ dev được cấp quyền dev hoặc sửa tài khoản dev khác
+create or replace function public.protect_role() returns trigger
+language plpgsql as $$
+begin
+  -- auth.uid() null = chạy từ SQL Editor / service role (quản trị hệ thống) → cho phép
+  if auth.uid() is not null and not public.is_dev() then
+    if new.role = 'dev' and old.role is distinct from 'dev' then raise exception 'Chỉ dev mới được cấp quyền dev'; end if;
+    if old.role = 'dev' and old.id <> auth.uid() then raise exception 'Không được sửa tài khoản dev'; end if;
+  end if;
+  if auth.uid() is not null and not public.is_manager() then
+    if new.role is distinct from old.role then raise exception 'Không được đổi role'; end if;
+    if new.active is distinct from old.active then raise exception 'Không được đổi trạng thái làm việc'; end if;
+    if new.email is distinct from old.email then raise exception 'Không được đổi tên đăng nhập'; end if;
+  end if;
+  return new;
+end $$;
 
 -- Tự tạo profile (role=driver) khi có user mới. Nâng quyền manager thủ công (xem README).
 create or replace function public.handle_new_user() returns trigger
@@ -248,7 +290,8 @@ create index if not exists audit_log_table_idx on public.audit_log (table_name);
 
 alter table public.audit_log enable row level security;
 drop policy if exists "audit_log: manager xem" on public.audit_log;
-create policy "audit_log: manager xem" on public.audit_log for select using ((select public.is_manager()));
+create policy "audit_log: manager xem" on public.audit_log for select
+  using ((select public.is_dev()) or ((select public.is_manager()) and table_name <> 'app_settings'));
 -- Không có policy insert/update/delete: chỉ trigger/hàm hệ thống mới ghi được, không ai sửa hay xóa được qua app.
 revoke all on public.audit_log from anon, authenticated;
 grant select on public.audit_log to authenticated;
@@ -310,9 +353,9 @@ create table if not exists public.app_settings (
   updated_at timestamptz not null default now()
 );
 alter table public.app_settings enable row level security;
-drop policy if exists "app_settings: manager toàn quyền" on public.app_settings;
-create policy "app_settings: manager toàn quyền" on public.app_settings for all
-  using ((select public.is_manager())) with check ((select public.is_manager()));
+drop policy if exists "app_settings: dev toàn quyền" on public.app_settings;
+create policy "app_settings: dev toàn quyền" on public.app_settings for all
+  using ((select public.is_dev())) with check ((select public.is_dev()));
 
 -- Nhật ký các tin đã gửi (để không gửi trùng, và để gửi lại khi lỗi)
 create table if not exists public.telegram_log (
@@ -328,8 +371,8 @@ create table if not exists public.telegram_log (
 create unique index if not exists telegram_log_once_idx on public.telegram_log (event, ref_id) where status in ('sent','pending');
 create index if not exists telegram_log_at_idx on public.telegram_log (at desc);
 alter table public.telegram_log enable row level security;
-drop policy if exists "telegram_log: manager xem" on public.telegram_log;
-create policy "telegram_log: manager xem" on public.telegram_log for select using ((select public.is_manager()));
+drop policy if exists "telegram_log: dev xem" on public.telegram_log;
+create policy "telegram_log: dev xem" on public.telegram_log for select using ((select public.is_dev()));
 revoke all on public.telegram_log from anon, authenticated;
 grant select on public.telegram_log to authenticated;
 
@@ -355,7 +398,7 @@ revoke all on public.private_config from anon, authenticated;
 create or replace function public.set_telegram_hook(p_url text, p_secret text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if auth.uid() is not null and not public.is_manager() then raise exception 'Chỉ quản lý mới có quyền này'; end if;
+  if auth.uid() is not null and not public.is_dev() then raise exception 'Chỉ dev mới có quyền này'; end if;
   if p_url is null or p_url !~ '^https://[^ ]+$' then raise exception 'Địa chỉ phải bắt đầu bằng https://'; end if;
   if p_secret is null or length(p_secret) < 16 then raise exception 'Mã bí mật tối thiểu 16 ký tự'; end if;
   insert into private_config (key, value) values ('hook_url', p_url), ('hook_secret', p_secret)
@@ -366,7 +409,7 @@ create or replace function public.telegram_hook_status() returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare u text; s text; net_ok boolean;
 begin
-  if auth.uid() is not null and not public.is_manager() then raise exception 'Chỉ quản lý mới có quyền này'; end if;
+  if auth.uid() is not null and not public.is_dev() then raise exception 'Chỉ dev mới có quyền này'; end if;
   select value into u from private_config where key = 'hook_url';
   select value into s from private_config where key = 'hook_secret';
   net_ok := to_regprocedure('net.http_post(text,jsonb,jsonb,jsonb,integer)') is not null;

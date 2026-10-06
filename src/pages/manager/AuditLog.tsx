@@ -64,7 +64,7 @@ export default function AuditLog({ lk }: { lk: Lookups }) {
     if (f === 'status' && t && STATUS_BY_TABLE[t]) return STATUS_BY_TABLE[t][String(v)] ?? String(v);
     if (f === 'driver_id') return lk.person(String(v));
     if (f === 'vehicle_id') return lk.plate(String(v));
-    if (f === 'role') return v === 'manager' ? 'Quản lý' : 'Tài xế';
+    if (f === 'role') return v === 'dev' ? 'Dev' : v === 'manager' ? 'Quản lý' : 'Tài xế';
     if (f === 'active') return v ? 'Còn làm' : 'Đã nghỉ';
     if (f === 'has_damage') return v ? 'Có' : 'Không';
     if (f === 'energy_type') return v === 'electric' ? 'Điện' : 'Xăng/Dầu';

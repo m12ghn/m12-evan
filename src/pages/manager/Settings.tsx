@@ -10,7 +10,7 @@ import TelegramSettings from './TelegramSettings';
 const empty = { plate: '', type: '', energy_type: 'fuel', capacity: 70, std_rate: 11, fuel_type: 'Dầu Diesel (DO)', odo: 0, energy_level: 50, status: 'ready' };
 type Form = typeof empty & { id?: string };
 
-export default function Settings({ lk }: { lk: Lookups }) {
+export default function Settings({ lk, isDev }: { lk: Lookups; isDev: boolean }) {
   const [f, setF] = useState<Form>(empty);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
@@ -71,23 +71,23 @@ export default function Settings({ lk }: { lk: Lookups }) {
         </tbody></table>
       </div>
 
-      <TelegramSettings />
+      {isDev && <TelegramSettings />}
 
-      <UsersSection lk={lk} savePerson={savePerson} />
+      <UsersSection lk={lk} savePerson={savePerson} isDev={isDev} />
     </div>
   );
 }
 
 type PersonField = 'full_name' | 'phone' | 'license';
 
-function UsersSection({ lk, savePerson }: { lk: Lookups; savePerson: (id: string, f: PersonField, v: string) => void }) {
+function UsersSection({ lk, savePerson, isDev }: { lk: Lookups; savePerson: (id: string, f: PersonField, v: string) => void; isDev: boolean }) {
   const { session } = useAuth();
   const me = session?.user.id;
   const [editId, setEditId] = useState('');
   const [uname, setUname] = useState('');
   const [pw, setPw] = useState('');
   const [adding, setAdding] = useState(false);
-  const [nu, setNu] = useState({ username: '', password: '', full_name: '', phone: '', license: '', role: 'driver' as 'driver' | 'manager' });
+  const [nu, setNu] = useState({ username: '', password: '', full_name: '', phone: '', license: '', role: 'driver' as 'driver' | 'manager' | 'dev' });
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -124,14 +124,14 @@ function UsersSection({ lk, savePerson }: { lk: Lookups; savePerson: (id: string
             <label>Họ tên<input value={nu.full_name} onChange={e => setNu({ ...nu, full_name: e.target.value })} /></label>
             <label>SĐT<input value={nu.phone} onChange={e => setNu({ ...nu, phone: e.target.value })} /></label>
             <label>Hạng bằng<input value={nu.license} onChange={e => setNu({ ...nu, license: e.target.value })} /></label>
-            <label>Quyền<select value={nu.role} onChange={e => setNu({ ...nu, role: e.target.value as 'driver' | 'manager' })}><option value="driver">Tài xế</option><option value="manager">Quản lý</option></select></label>
+            <label>Quyền<select value={nu.role} onChange={e => setNu({ ...nu, role: e.target.value as 'driver' | 'manager' | 'dev' })}><option value="driver">Tài xế</option><option value="manager">Quản lý</option>{isDev && <option value="dev">Dev (toàn quyền)</option>}</select></label>
           </div>
           <button className="btn" disabled={busy || !nu.username || nu.password.length < 6} onClick={create}>{busy ? 'Đang tạo…' : 'Tạo tài khoản'}</button>
         </div>
       )}
       <div className="scroll">
         <table><thead><tr><th>Tên đăng nhập</th><th>Họ tên</th><th>SĐT</th><th>Bằng lái</th><th>Quyền</th><th>Trạng thái</th><th></th></tr></thead><tbody>
-          {lk.people.map(p => {
+          {lk.people.filter(p => isDev || p.role !== 'dev').map(p => {
             const cur = usernameOf(p.email);
             return (
               <Fragment key={p.id}>
@@ -140,7 +140,7 @@ function UsersSection({ lk, savePerson }: { lk: Lookups; savePerson: (id: string
                   {(['full_name', 'phone', 'license'] as const).map(k => (
                     <td key={k}><input defaultValue={p[k] ?? ''} onBlur={e => e.target.value !== (p[k] ?? '') && savePerson(p.id, k, e.target.value)} /></td>
                   ))}
-                  <td><span className="chip">{p.role === 'manager' ? 'Quản lý' : 'Tài xế'}</span></td>
+                  <td><span className="chip">{p.role === 'dev' ? 'Dev' : p.role === 'manager' ? 'Quản lý' : 'Tài xế'}</span></td>
                   <td><span className={`chip ${p.active === false ? 'inactive' : 'on_duty'}`}>{p.active === false ? 'Đã nghỉ' : 'Còn làm'}</span></td>
                   <td><button className="btn ghost" onClick={() => { setEditId(editId === p.id ? '' : p.id); setUname(cur); setPw(''); setError(''); setMsg(''); }}>Đổi TK / MK</button>{' '}
                     <button className="btn ghost" disabled={busy || p.id === me} onClick={() => toggleActive(p.id, p.active === false, p.full_name ?? cur)}>

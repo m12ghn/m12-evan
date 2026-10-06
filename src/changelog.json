@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-10-06",
+    "items": [
+      {
+        "type": "new",
+        "scope": "all",
+        "title": "Quyền Dev (toàn quyền) tách khỏi Quản lý",
+        "detail": "Thêm role Dev: có mọi quyền của Quản lý, và là người duy nhất thấy Cài đặt Telegram (Chat ID, mã bí mật, nhật ký gửi tin), tab Cập nhật của app và các thay đổi cấu hình trong Nhật ký. Quản lý vẫn tạo xe, tạo tài khoản tài xế và làm các tác vụ vận hành như cũ, nhưng không thấy hay sửa được tài khoản Dev."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 013 (role dev)",
+        "detail": "Thêm hàm is_dev(); is_manager() gồm cả dev; app_settings, telegram_log, set_telegram_hook/telegram_hook_status chỉ dev; chỉ dev cấp quyền dev hoặc sửa tài khoản dev."
+      }
+    ]
+  },
+  {
     "date": "2026-10-05",
     "items": [
       {

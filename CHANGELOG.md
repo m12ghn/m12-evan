@@ -2,6 +2,16 @@
 
 _File này được tạo tự động từ `src/changelog.json` (chạy `npm run changelog`). Cùng nội dung hiển thị trong app: trang Quản lý → tab 📝 Cập nhật._
 
+## 06/10/2026 (Thứ ba)
+
+### ✨ Tính năng mới
+
+- **Quyền Dev (toàn quyền) tách khỏi Quản lý** _(Cả hai)_ — Thêm role Dev: có mọi quyền của Quản lý, và là người duy nhất thấy Cài đặt Telegram (Chat ID, mã bí mật, nhật ký gửi tin), tab Cập nhật của app và các thay đổi cấu hình trong Nhật ký. Quản lý vẫn tạo xe, tạo tài khoản tài xế và làm các tác vụ vận hành như cũ, nhưng không thấy hay sửa được tài khoản Dev.
+
+### ⚙️ Hệ thống
+
+- **Cơ sở dữ liệu: migration 013 (role dev)** _(Cả hai)_ — Thêm hàm is_dev(); is_manager() gồm cả dev; app_settings, telegram_log, set_telegram_hook/telegram_hook_status chỉ dev; chỉ dev cấp quyền dev hoặc sửa tài khoản dev.
+
 ## 05/10/2026 (Thứ hai)
 
 ### ✨ Tính năng mới
@@ -29,6 +39,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🐞 Sửa lỗi
 
+- **Telegram: không còn bắn lại lịch sử cũ** _(Quản lý)_ — Quét gửi bù chỉ xét 2 giờ gần nhất và chỉ các sự kiện sau mốc 'chỉ gửi tin mới từ bây giờ' (tự đặt khi bật/lưu cài đặt; có nút đặt lại). Tin mới vẫn gửi tức thì qua trigger.
 - **Telegram: tăng thời gian chờ của database lên 40 giây** _(Cả hai)_ — Gửi tin kèm ảnh có thể mất hơn 5 giây (tải ảnh, gửi album, máy chủ khởi động) nên database từng báo timeout dù máy chủ vẫn đang xử lý.
 - **Telegram: tin chưa gửi được giờ hiện rõ lý do thay vì im lặng** _(Quản lý)_ — Khi chưa có token, chưa bật gửi tin hoặc chưa nhập Chat ID, bảng Tin gần đây ghi dòng Chưa gửi kèm lý do cụ thể và nút Gửi lại. Cấu hình xong chỉ cần bấm Gửi lại hoặc Quét và gửi bù.
 - **Gửi lại sau khi mất mạng không bị tạo trùng hoặc báo lỗi nhầm** _(Tài xế)_ — Phiếu nhiên liệu/điện và báo cáo tai nạn không bị ghi hai lần khi gửi lại. Nhận xe/trả xe mà lần trước đã thành công thì tự làm mới màn hình thay vì báo lỗi.
