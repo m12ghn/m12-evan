@@ -35,28 +35,47 @@ export default async function handler(req, res) {
     record_id: id, row_data: row ?? null, changes: changes ?? null,
   }).then(() => {}, () => {});
 
+  // Tạo một tài khoản (dùng chung cho create và bulk_create). Trả { id } hoặc { code, error }
+  const createOne = async u => {
+    if (!u || typeof u !== 'object') return { code: 400, error: 'Dữ liệu không hợp lệ' };
+    if (u.role === 'dev' && !isDev) return { code: 403, error: 'Chỉ dev mới tạo được tài khoản dev' };
+    if (!validUser(u.username)) return { code: 400, error: 'Tên đăng nhập không hợp lệ (chữ, số, . _ -)' };
+    if (!u.password || u.password.length < 6) return { code: 400, error: 'Mật khẩu tối thiểu 6 ký tự' };
+    const email = toEmail(u.username);
+    const { data, error } = await admin.auth.admin.createUser({
+      email, password: u.password, email_confirm: true, user_metadata: { full_name: u.full_name || null },
+    });
+    if (error) return { code: 400, error: friendly(error.message) };
+    const role = u.role === 'dev' ? 'dev' : u.role === 'manager' ? 'manager' : 'driver';
+    const { error: pErr } = await admin.from('profiles').update({
+      role, email, full_name: u.full_name || null, phone: u.phone || null, license: u.license || null,
+    }).eq('id', data.user.id);
+    if (pErr) {
+      await admin.auth.admin.deleteUser(data.user.id); // không để lại tài khoản dở dang
+      return { code: 500, error: `Không lưu được hồ sơ (${pErr.message}). Đã chạy supabase/migration-002-profile-email.sql chưa?` };
+    }
+    await log('create_user', data.user.id, { email, role, full_name: u.full_name || null });
+    return { id: data.user.id };
+  };
+
   const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
 
   try {
     if (b.action === 'create') {
-      if (b.role === 'dev' && !isDev) return fail(res, 403, 'Chỉ dev mới tạo được tài khoản dev');
-      if (!validUser(b.username)) return fail(res, 400, 'Tên đăng nhập không hợp lệ (chữ, số, . _ -)');
-      if (!b.password || b.password.length < 6) return fail(res, 400, 'Mật khẩu tối thiểu 6 ký tự');
-      const email = toEmail(b.username);
-      const { data, error } = await admin.auth.admin.createUser({
-        email, password: b.password, email_confirm: true, user_metadata: { full_name: b.full_name || null },
-      });
-      if (error) return fail(res, 400, friendly(error.message));
-      const role = b.role === 'dev' ? 'dev' : b.role === 'manager' ? 'manager' : 'driver';
-      const { error: pErr } = await admin.from('profiles').update({
-        role, email, full_name: b.full_name || null, phone: b.phone || null, license: b.license || null,
-      }).eq('id', data.user.id);
-      if (pErr) {
-        await admin.auth.admin.deleteUser(data.user.id); // không để lại tài khoản dở dang
-        return fail(res, 500, `Không lưu được hồ sơ (${pErr.message}). Đã chạy supabase/migration-002-profile-email.sql chưa?`);
+      const r = await createOne(b);
+      return r.error ? fail(res, r.code, r.error) : res.json({ ok: true, id: r.id });
+    }
+
+    // Tạo hàng loạt từ Excel: mỗi dòng độc lập, trả kết quả từng dòng (tối đa 25 dòng/lần gọi để không quá thời gian hàm)
+    if (b.action === 'bulk_create') {
+      if (!Array.isArray(b.users) || !b.users.length || b.users.length > 25) return fail(res, 400, 'Mỗi lần gửi 1–25 người dùng');
+      const results = [];
+      for (const u of b.users) {
+        let r;
+        try { r = await createOne(u); } catch (e) { r = { error: e.message || 'Lỗi' }; }
+        results.push({ username: u?.username ?? '', ok: !r.error, error: r.error ?? null });
       }
-      await log('create_user', data.user.id, { email, role, full_name: b.full_name || null });
-      return res.json({ ok: true, id: data.user.id });
+      return res.json({ ok: true, results });
     }
 
     if (b.action === 'update') {

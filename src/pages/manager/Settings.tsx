@@ -4,6 +4,7 @@ import type { Lookups } from '../../lib/useLookups';
 import { VEHICLE_STATUS, type Vehicle, type VehicleStatus } from '../../lib/types';
 import { adminUsers, usernameOf } from '../../lib/adminApi';
 import BulkVehicles from './BulkVehicles';
+import BulkUsers from './BulkUsers';
 import { useAuth } from '../../lib/auth';
 import TelegramSettings from './TelegramSettings';
 
@@ -72,6 +73,8 @@ export default function Settings({ lk, isDev }: { lk: Lookups; isDev: boolean })
       </div>
 
       {isDev && <TelegramSettings />}
+
+      <BulkUsers lk={lk} isDev={isDev} />
 
       <UsersSection lk={lk} savePerson={savePerson} isDev={isDev} />
     </div>

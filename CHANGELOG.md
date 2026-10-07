@@ -2,6 +2,12 @@
 
 _File này được tạo tự động từ `src/changelog.json` (chạy `npm run changelog`). Cùng nội dung hiển thị trong app: trang Quản lý → tab 📝 Cập nhật._
 
+## 07/10/2026 (Thứ tư)
+
+### ✨ Tính năng mới
+
+- **Thêm người dùng hàng loạt bằng Excel** _(Quản lý)_ — Cài đặt → Thêm người dùng hàng loạt: tải file mẫu (MSNV, mật khẩu, họ tên, SĐT, hạng bằng, quyền), điền rồi tải lên. Hệ thống kiểm tra từng dòng (trùng, mật khẩu < 6 ký tự, tên không hợp lệ), cho xem trước, rồi tạo tài khoản (tối đa 500 dòng/lần); tài khoản đã có thì bỏ qua, không ghi đè.
+
 ## 06/10/2026 (Thứ ba)
 
 ### ✨ Tính năng mới
