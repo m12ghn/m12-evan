@@ -133,7 +133,7 @@ create table public.trips (
   post_notes text,
   has_damage boolean not null default false,
   damage_notes text,
-  photos_start jsonb,   -- {taplo, front, back, left, right} = đường dẫn trong Storage
+  photos_start jsonb,   -- {taplo, front, back, left, right, insurance, mortgage} = đường dẫn trong Storage
   photos_end jsonb,
   closed_by uuid references public.profiles(id),   -- có giá trị = ca do quản lý đóng thay tài xế
   check (end_odo is null or end_odo >= start_odo)

@@ -40,7 +40,7 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
     const x = vehicles.find(y => y.id === id);
     if (x) { setOdo(String(x.odo)); setLevel(x.energy_level); }
   };
-  const valid = v && Number(odo) > 0 && photosComplete(photos) && agree;
+  const valid = v && Number(odo) > 0 && photosComplete(photos, true) && agree;
 
   async function submit() {
     if (!v) return;
@@ -76,7 +76,7 @@ export default function CheckIn({ userId, onDone, onBack }: { userId: string; on
         </p>
         <label>{L.level}: {level}% (~{Math.round(level / 100 * v.capacity)} {L.unit})
           <input type="range" min={0} max={100} value={level} onChange={e => setLevel(Number(e.target.value))} /></label>
-        <PhotoSet photos={photos} onChange={setPhotos} />
+        <PhotoSet photos={photos} onChange={setPhotos} docs />
         <textarea placeholder="Ghi chú vết trầy xước / hư hỏng có sẵn (nếu có)" value={notes} onChange={e => setNotes(e.target.value)} />
         <label className="row"><input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} />
           Tôi xác nhận tình trạng xe khi nhận đúng như ảnh</label>

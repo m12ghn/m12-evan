@@ -1,5 +1,16 @@
 [
   {
+    "date": "2026-10-08",
+    "items": [
+      {
+        "type": "change",
+        "scope": "driver",
+        "title": "Chụp hình bắt đầu ca: thêm 2 ảnh giấy tờ",
+        "detail": "Thêm Bảo hiểm bắt buộc và Giấy thế chấp ngân hàng (bắt buộc, có thể chụp hoặc chọn ảnh có sẵn trong máy). Quản lý xem trong chi tiết ca; tin Telegram vào ca cũng gửi kèm 2 ảnh này. Ca cũ không có 2 ảnh vẫn xem bình thường."
+      }
+    ]
+  },
+  {
     "date": "2026-10-07",
     "items": [
       {

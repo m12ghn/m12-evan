@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Lookups } from '../../lib/useLookups';
-import SignedPhotos, { TRIP_LABELS } from '../../components/SignedPhotos';
+import SignedPhotos, { START_LABELS, TRIP_LABELS } from '../../components/SignedPhotos';
 import type { PhotoMap } from '../../lib/storage';
 import { downloadXlsx, type Cell } from '../../lib/excel';
 import { dayAfter, dayStart, fetchAll, ymd } from '../../lib/dates';
@@ -139,7 +139,7 @@ export default function Trips({ lk }: { lk: Lookups }) {
                       {t.pre_notes && <p><b>Ghi chú nhận xe:</b> {t.pre_notes}</p>}
                       {t.post_notes && <p><b>Ghi chú cuối ca:</b> {t.post_notes}</p>}
                       {t.damage_notes && <p className="error"><b>Sự cố cuối ca:</b> {t.damage_notes}</p>}
-                      <h4>Ảnh đầu ca</h4><SignedPhotos photos={t.photos_start} labels={TRIP_LABELS} />
+                      <h4>Ảnh đầu ca</h4><SignedPhotos photos={t.photos_start} labels={START_LABELS} />
                       <h4>Ảnh cuối ca</h4><SignedPhotos photos={t.photos_end} labels={TRIP_LABELS} />
                     </td></tr>
                   )}

@@ -16,7 +16,7 @@ export function vnTime(iso) {
 export const num = n => String(Number(n)).replace('.', ',');
 
 export const PHOTO_ORDER = {
-  checkin: ['taplo', 'front', 'back', 'left', 'right'],
+  checkin: ['taplo', 'front', 'back', 'left', 'right', 'insurance', 'mortgage'],
   checkout: ['taplo', 'front', 'back', 'left', 'right'],
   refuel_electric: ['before', 'after', 'receipt'],
   refuel_fuel: ['before', 'after', 'pump', 'receipt'],

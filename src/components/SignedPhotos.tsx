@@ -17,4 +17,5 @@ export default function SignedPhotos({ photos, labels }: { photos: PhotoMap | nu
     </div>
   );
 }
+export const START_LABELS = { taplo: 'Taplo', front: 'Đầu xe', back: 'Đuôi xe', left: 'Sườn trái', right: 'Sườn phải', insurance: 'Bảo hiểm bắt buộc', mortgage: 'Giấy thế chấp ngân hàng' };
 export const TRIP_LABELS = { taplo: 'Taplo', front: 'Đầu xe', back: 'Đuôi xe', left: 'Sườn trái', right: 'Sườn phải' };

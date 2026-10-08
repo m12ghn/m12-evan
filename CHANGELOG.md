@@ -2,6 +2,12 @@
 
 _File này được tạo tự động từ `src/changelog.json` (chạy `npm run changelog`). Cùng nội dung hiển thị trong app: trang Quản lý → tab 📝 Cập nhật._
 
+## 08/10/2026 (Thứ năm)
+
+### 🔧 Chỉnh sửa
+
+- **Chụp hình bắt đầu ca: thêm 2 ảnh giấy tờ** _(Tài xế)_ — Thêm Bảo hiểm bắt buộc và Giấy thế chấp ngân hàng (bắt buộc, có thể chụp hoặc chọn ảnh có sẵn trong máy). Quản lý xem trong chi tiết ca; tin Telegram vào ca cũng gửi kèm 2 ảnh này. Ca cũ không có 2 ảnh vẫn xem bình thường.
+
 ## 07/10/2026 (Thứ tư)
 
 ### ✨ Tính năng mới
