@@ -5,6 +5,24 @@
       {
         "type": "change",
         "scope": "manager",
+        "title": "Tai nạn: Lưu thành nhật ký cập nhật từng lần (có thời gian, người cập nhật, ảnh)",
+        "detail": "Thay nút Lưu cũ: mỗi lần bấm Lưu cập nhật tạo một dòng mới dưới phần mô tả gồm thời gian, người cập nhật, nội dung, ảnh bổ sung (tối đa 6) và trạng thái nếu có đổi. Các dòng đã lưu không sửa hay xóa được. Ghi chú cũ vẫn hiển thị."
+      },
+      {
+        "type": "new",
+        "scope": "manager",
+        "title": "Tai nạn: nút Cập nhật bảo hiểm",
+        "detail": "Mỗi báo cáo tai nạn có mục Bảo hiểm riêng: bấm Cập nhật bảo hiểm để thêm chữ (hãng, số hồ sơ, tiến độ, bồi thường) và/hoặc ảnh hồ sơ; hiển thị theo thời gian."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 014 (accident_updates)",
+        "detail": "Bảng accident_updates và hàm add_accident_update (lưu cập nhật + đổi trạng thái cùng lúc); ghi vào Nhật ký thao tác."
+      },
+      {
+        "type": "change",
+        "scope": "manager",
         "title": "Bộ lọc gõ + chọn nhiều giá trị; trạng thái thành bộ lọc; bỏ ô tìm kiếm",
         "detail": "Các ô lọc ở Đội xe, Nhật ký ca, Duyệt nhiên liệu/điện, Tai nạn giờ vừa gõ để tìm (không cần dấu) vừa chọn nhiều giá trị, hiện dạng thẻ nhỏ; để trống là tất cả. Các nút trạng thái (Đang vận hành, Sẵn sàng… / Chờ duyệt… / Mới…) chuyển thành bộ lọc Trạng thái chọn nhiều. Bỏ ô 'Tìm biển số, loại xe, tài xế' (đã có lọc Biển số, Loại xe, Tài xế). Duyệt nhiên liệu mặc định lọc 'Chờ duyệt', Tai nạn mặc định lọc 'Mới'."
       },
