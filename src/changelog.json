@@ -5,6 +5,12 @@
       {
         "type": "change",
         "scope": "manager",
+        "title": "Tai nạn: bỏ mục Cập nhật bảo hiểm riêng, gộp vào Cập nhật sự vụ",
+        "detail": "Chỉ còn một nút ✏️ Cập nhật sự vụ: nhập nội dung (gồm cả thông tin bảo hiểm), thêm ảnh, đổi trạng thái; mọi lần lưu hiện chung một danh sách theo thời gian. Các cập nhật bảo hiểm đã lưu trước đó (nếu có) vẫn hiện trong danh sách này."
+      },
+      {
+        "type": "change",
+        "scope": "manager",
         "title": "Tai nạn: khung cập nhật chỉ hiện khi bấm nút",
         "detail": "Khung nhập cập nhật diễn biến và bảo hiểm được ẩn; bấm ✏️ Cập nhật (mục Diễn biến xử lý) hoặc 🛡️ Cập nhật bảo hiểm mới hiện ra, có nút Hủy để đóng lại. Lưu xong tự đóng."
       },

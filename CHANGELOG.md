@@ -11,6 +11,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🔧 Chỉnh sửa
 
+- **Tai nạn: bỏ mục Cập nhật bảo hiểm riêng, gộp vào Cập nhật sự vụ** _(Quản lý)_ — Chỉ còn một nút ✏️ Cập nhật sự vụ: nhập nội dung (gồm cả thông tin bảo hiểm), thêm ảnh, đổi trạng thái; mọi lần lưu hiện chung một danh sách theo thời gian. Các cập nhật bảo hiểm đã lưu trước đó (nếu có) vẫn hiện trong danh sách này.
 - **Tai nạn: khung cập nhật chỉ hiện khi bấm nút** _(Quản lý)_ — Khung nhập cập nhật diễn biến và bảo hiểm được ẩn; bấm ✏️ Cập nhật (mục Diễn biến xử lý) hoặc 🛡️ Cập nhật bảo hiểm mới hiện ra, có nút Hủy để đóng lại. Lưu xong tự đóng.
 - **Tai nạn: Lưu thành nhật ký cập nhật từng lần (có thời gian, người cập nhật, ảnh)** _(Quản lý)_ — Thay nút Lưu cũ: mỗi lần bấm Lưu cập nhật tạo một dòng mới dưới phần mô tả gồm thời gian, người cập nhật, nội dung, ảnh bổ sung (tối đa 6) và trạng thái nếu có đổi. Các dòng đã lưu không sửa hay xóa được. Ghi chú cũ vẫn hiển thị.
 - **Bộ lọc gõ + chọn nhiều giá trị; trạng thái thành bộ lọc; bỏ ô tìm kiếm** _(Quản lý)_ — Các ô lọc ở Đội xe, Nhật ký ca, Duyệt nhiên liệu/điện, Tai nạn giờ vừa gõ để tìm (không cần dấu) vừa chọn nhiều giá trị, hiện dạng thẻ nhỏ; để trống là tất cả. Các nút trạng thái (Đang vận hành, Sẵn sàng… / Chờ duyệt… / Mới…) chuyển thành bộ lọc Trạng thái chọn nhiều. Bỏ ô 'Tìm biển số, loại xe, tài xế' (đã có lọc Biển số, Loại xe, Tài xế). Duyệt nhiên liệu mặc định lọc 'Chờ duyệt', Tai nạn mặc định lọc 'Mới'.
