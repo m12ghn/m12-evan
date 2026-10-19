@@ -1,5 +1,16 @@
 [
   {
+    "date": "2026-10-19",
+    "items": [
+      {
+        "type": "new",
+        "scope": "manager",
+        "title": "Bộ lọc theo loại xe, biển số, tài xế ở các trang quản lý",
+        "detail": "Đội xe, Duyệt nhiên liệu/điện và Tai nạn có thêm bộ lọc Loại xe (Van Gaz, Van điện…), Năng lượng, Biển số, Tài xế và nút Xóa lọc; số đếm theo từng trạng thái cập nhật theo bộ lọc. Nhật ký ca thêm bộ lọc Biển số (đã có sẵn Loại xe, Năng lượng, Tài xế)."
+      }
+    ]
+  },
+  {
     "date": "2026-10-08",
     "items": [
       {

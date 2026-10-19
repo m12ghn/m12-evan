@@ -2,6 +2,12 @@
 
 _File này được tạo tự động từ `src/changelog.json` (chạy `npm run changelog`). Cùng nội dung hiển thị trong app: trang Quản lý → tab 📝 Cập nhật._
 
+## 19/10/2026 (Thứ hai)
+
+### ✨ Tính năng mới
+
+- **Bộ lọc theo loại xe, biển số, tài xế ở các trang quản lý** _(Quản lý)_ — Đội xe, Duyệt nhiên liệu/điện và Tai nạn có thêm bộ lọc Loại xe (Van Gaz, Van điện…), Năng lượng, Biển số, Tài xế và nút Xóa lọc; số đếm theo từng trạng thái cập nhật theo bộ lọc. Nhật ký ca thêm bộ lọc Biển số (đã có sẵn Loại xe, Năng lượng, Tài xế).
+
 ## 08/10/2026 (Thứ năm)
 
 ### 🔧 Chỉnh sửa

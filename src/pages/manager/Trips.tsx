@@ -30,6 +30,7 @@ export default function Trips({ lk }: { lk: Lookups }) {
   const [energy, setEnergy] = useState<'all' | 'fuel' | 'electric'>('all');
   const [vtype, setVtype] = useState('');
   const [driver, setDriver] = useState('');
+  const [plateId, setPlateId] = useState('');
   const [issueOnly, setIssueOnly] = useState(false);
   const [overOnly, setOverOnly] = useState(false);
   const [open, setOpen] = useState('');
@@ -60,6 +61,7 @@ export default function Trips({ lk }: { lk: Lookups }) {
     return (status === 'all' || t.status === status)
       && (energy === 'all' || v?.energy_type === energy)
       && (!vtype || v?.type === vtype)
+      && (!plateId || t.vehicle_id === plateId)
       && (!driver || t.driver_id === driver)
       && (!issueOnly || t.has_damage) && (!overOnly || isOver(t))
       && (!q || `${lk.plate(t.vehicle_id)} ${lk.person(t.driver_id)}`.toLowerCase().includes(q.toLowerCase()));
@@ -103,6 +105,7 @@ export default function Trips({ lk }: { lk: Lookups }) {
         <label>Đến ngày<input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} /></label>
         <label>Tìm kiếm<input placeholder="Biển số / tài xế" value={q} onChange={e => setQ(e.target.value)} /></label>
         <label>Loại xe<select value={vtype} onChange={e => setVtype(e.target.value)}><option value="">Tất cả</option>{vehicleTypes.map(t => <option key={t}>{t}</option>)}</select></label>
+        <label>Biển số<select value={plateId} onChange={e => setPlateId(e.target.value)}><option value="">Tất cả</option>{lk.vehicles.map(v => <option key={v.id} value={v.id}>{v.plate}</option>)}</select></label>
         <label>Năng lượng<select value={energy} onChange={e => setEnergy(e.target.value as typeof energy)}><option value="all">Tất cả</option><option value="fuel">Xăng / Dầu</option><option value="electric">Điện</option></select></label>
         <label>Tài xế<select value={driver} onChange={e => setDriver(e.target.value)}><option value="">Tất cả</option>{drivers.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.email}</option>)}</select></label>
         <label>Trạng thái ca<select value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="all">Tất cả</option><option value="on_duty">Đang chạy</option><option value="completed">Hoàn tất</option></select></label>

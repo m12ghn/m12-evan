@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Lookups } from '../../lib/useLookups';
+import { useVehicleFilter } from '../../components/VehicleFilter';
 import SignedPhotos from '../../components/SignedPhotos';
 import { refuelSlots } from '../../lib/types';
 
@@ -20,6 +21,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
+  const vf = useVehicleFilter(lk);
 
   const load = useCallback(async () => {
     const { data: r } = await supabase.from('refuels').select('*').order('created_at', { ascending: false }).limit(200);
@@ -45,13 +47,15 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
     await load(); onChanged();
   }
 
-  const list = rows.filter(r => filter === 'all' || r.status === filter);
+  const inScope = rows.filter(r => vf.match(tripVehicle[r.trip_id], r.driver_id));
+  const list = inScope.filter(r => filter === 'all' || r.status === filter);
   return (
     <div className="stack">
+      {vf.ui}
       <div className="row" style={{ flexWrap: 'wrap' }}>
         {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (
           <button key={f} className={`btn ${filter === f ? '' : 'ghost'}`} onClick={() => setFilter(f)}>
-            {f === 'all' ? 'Tất cả' : STATUS[f]} ({f === 'all' ? rows.length : rows.filter(r => r.status === f).length})
+            {f === 'all' ? 'Tất cả' : STATUS[f]} ({f === 'all' ? inScope.length : inScope.filter(r => r.status === f).length})
           </button>
         ))}
       </div>

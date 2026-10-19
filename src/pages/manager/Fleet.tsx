@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Lookups } from '../../lib/useLookups';
 import { VEHICLE_STATUS, type Vehicle, type VehicleStatus } from '../../lib/types';
+import { useVehicleFilter } from '../../components/VehicleFilter';
 import CloseTripDialog, { type OpenTrip } from './CloseTripDialog';
 
 const STATUS = VEHICLE_STATUS;
@@ -9,6 +10,7 @@ const STATUS = VEHICLE_STATUS;
 export default function Fleet({ lk }: { lk: Lookups }) {
   const [filter, setFilter] = useState<'all' | VehicleStatus>('all');
   const [q, setQ] = useState('');
+  const vf = useVehicleFilter(lk);
   const [openTrips, setOpenTrips] = useState<OpenTrip[]>([]);
   const [closing, setClosing] = useState<{ trip: OpenTrip; vehicle: Vehicle } | null>(null);
   const [msg, setMsg] = useState('');
@@ -22,7 +24,7 @@ export default function Fleet({ lk }: { lk: Lookups }) {
   const hoursOpen = (t: OpenTrip) => Math.floor((Date.now() - Date.parse(t.start_time)) / 3600_000);
 
   const count = (s: VehicleStatus) => lk.vehicles.filter(v => v.status === s).length;
-  const list = lk.vehicles.filter(v => (filter === 'all' || v.status === filter) &&
+  const list = lk.vehicles.filter(v => (filter === 'all' || v.status === filter) && vf.match(v.id, v.driver_id) &&
     (!q || `${v.plate} ${v.type} ${lk.person(v.driver_id)}`.toLowerCase().includes(q.toLowerCase())));
 
   return (
@@ -34,6 +36,7 @@ export default function Fleet({ lk }: { lk: Lookups }) {
         <div className="card"><b>{count('maintenance') + count('repair')}</b><span>Bảo dưỡng / sửa chữa</span></div>
         <div className="card"><b>{count('inactive')}</b><span>Ngưng hoạt động</span></div>
       </div>
+      {vf.ui}
       <div className="row" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
         <input placeholder="Tìm biển số, loại xe, tài xế…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
         {(['all', 'on_duty', 'ready', 'maintenance', 'repair', 'inactive'] as const).map(f => (
