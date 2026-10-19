@@ -1,37 +1,44 @@
 import { useMemo, useState } from 'react';
 import type { Lookups } from '../lib/useLookups';
+import MultiSelect, { type Opt } from './MultiSelect';
 
-// Bộ lọc dùng chung cho các trang quản lý: loại xe (Van Gaz, Van điện…), năng lượng, biển số, tài xế
-export function useVehicleFilter(lk: Lookups) {
-  const [vtype, setVtype] = useState('');
-  const [energy, setEnergy] = useState<'' | 'fuel' | 'electric'>('');
-  const [plateId, setPlateId] = useState('');
-  const [driver, setDriver] = useState('');
-  const active = Boolean(vtype || energy || plateId || driver);
+// Bộ lọc dùng chung cho các trang quản lý: trạng thái, loại xe (Van Gaz, Van điện…), năng lượng, biển số, tài xế.
+// Mỗi ô vừa gõ để tìm vừa chọn được nhiều giá trị; để trống = không lọc.
+export function useVehicleFilter(lk: Lookups, opts?: { statuses?: Opt[]; defaultStatuses?: string[]; statusLabel?: string }) {
+  const [statuses, setStatuses] = useState<string[]>(opts?.defaultStatuses ?? []);
+  const [types, setTypes] = useState<string[]>([]);
+  const [energies, setEnergies] = useState<string[]>([]);
+  const [plates, setPlates] = useState<string[]>([]);
+  const [drivers, setDrivers] = useState<string[]>([]);
+  const active = Boolean(statuses.length || types.length || energies.length || plates.length || drivers.length);
 
-  /** vehicleId có thể rỗng (vd. báo cáo tai nạn chưa chọn xe) */
-  const match = (vehicleId: string | null | undefined, driverId: string | null | undefined) => {
-    if (vtype || energy || plateId) {
+  /** vehicleId có thể rỗng (vd. báo cáo tai nạn chưa chọn xe); status chỉ dùng khi trang có bộ lọc trạng thái */
+  const match = (vehicleId: string | null | undefined, driverId: string | null | undefined, status?: string) => {
+    if (statuses.length && !(status && statuses.includes(status))) return false;
+    if (types.length || energies.length || plates.length) {
       const v = vehicleId ? lk.vehicle(vehicleId) : undefined;
       if (!v) return false;
-      if (vtype && v.type !== vtype) return false;
-      if (energy && v.energy_type !== energy) return false;
-      if (plateId && v.id !== plateId) return false;
+      if (types.length && !types.includes(v.type ?? '')) return false;
+      if (energies.length && !energies.includes(v.energy_type)) return false;
+      if (plates.length && !plates.includes(v.id)) return false;
     }
-    return !driver || driverId === driver;
+    return !drivers.length || (driverId != null && drivers.includes(driverId));
   };
-  const reset = () => { setVtype(''); setEnergy(''); setPlateId(''); setDriver(''); };
+  const reset = () => { setStatuses([]); setTypes([]); setEnergies([]); setPlates([]); setDrivers([]); };
 
-  const types = useMemo(() => [...new Set(lk.vehicles.map(v => v.type).filter(Boolean))].sort() as string[], [lk.vehicles]);
-  const drivers = useMemo(() => lk.people.filter(p => p.role === 'driver'), [lk.people]);
+  const typeOpts = useMemo<Opt[]>(() => [...new Set(lk.vehicles.map(v => v.type).filter(Boolean))].sort().map(t => ({ value: t as string, label: t as string })), [lk.vehicles]);
+  const plateOpts = useMemo<Opt[]>(() => lk.vehicles.map(v => ({ value: v.id, label: v.plate })), [lk.vehicles]);
+  const driverOpts = useMemo<Opt[]>(() => lk.people.filter(p => p.role === 'driver')
+    .map(p => ({ value: p.id, label: `${p.full_name ?? p.email ?? '—'}${p.active === false ? ' (đã nghỉ)' : ''}` })), [lk.people]);
 
   const ui = (
     <div className="filters" style={{ marginBottom: 12 }}>
-      <label>Loại xe<select value={vtype} onChange={e => setVtype(e.target.value)}><option value="">Tất cả</option>{types.map(t => <option key={t}>{t}</option>)}</select></label>
-      <label>Năng lượng<select value={energy} onChange={e => setEnergy(e.target.value as typeof energy)}><option value="">Tất cả</option><option value="fuel">Xăng / Dầu</option><option value="electric">Điện</option></select></label>
-      <label>Biển số<select value={plateId} onChange={e => setPlateId(e.target.value)}><option value="">Tất cả</option>{lk.vehicles.map(v => <option key={v.id} value={v.id}>{v.plate}</option>)}</select></label>
-      <label>Tài xế<select value={driver} onChange={e => setDriver(e.target.value)}><option value="">Tất cả</option>{drivers.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.email}{p.active === false ? ' (đã nghỉ)' : ''}</option>)}</select></label>
-      {active && <label>&nbsp;<button className="btn ghost" onClick={reset}>✕ Xóa lọc</button></label>}
+      {opts?.statuses && <MultiSelect label={opts.statusLabel ?? 'Trạng thái'} options={opts.statuses} value={statuses} onChange={setStatuses} />}
+      <MultiSelect label="Loại xe" options={typeOpts} value={types} onChange={setTypes} />
+      <MultiSelect label="Năng lượng" options={[{ value: 'fuel', label: 'Xăng / Dầu' }, { value: 'electric', label: 'Điện' }]} value={energies} onChange={setEnergies} />
+      <MultiSelect label="Biển số" options={plateOpts} value={plates} onChange={setPlates} />
+      <MultiSelect label="Tài xế" options={driverOpts} value={drivers} onChange={setDrivers} />
+      {active && <div className="ms"><span className="ms-label">&nbsp;</span><button className="btn ghost" onClick={reset}>✕ Xóa lọc</button></div>}
     </div>
   );
   return { match, ui, active };

@@ -8,9 +8,7 @@ import CloseTripDialog, { type OpenTrip } from './CloseTripDialog';
 const STATUS = VEHICLE_STATUS;
 
 export default function Fleet({ lk }: { lk: Lookups }) {
-  const [filter, setFilter] = useState<'all' | VehicleStatus>('all');
-  const [q, setQ] = useState('');
-  const vf = useVehicleFilter(lk);
+  const vf = useVehicleFilter(lk, { statuses: (Object.keys(STATUS) as VehicleStatus[]).map(k => ({ value: k, label: STATUS[k] })) });
   const [openTrips, setOpenTrips] = useState<OpenTrip[]>([]);
   const [closing, setClosing] = useState<{ trip: OpenTrip; vehicle: Vehicle } | null>(null);
   const [msg, setMsg] = useState('');
@@ -24,8 +22,7 @@ export default function Fleet({ lk }: { lk: Lookups }) {
   const hoursOpen = (t: OpenTrip) => Math.floor((Date.now() - Date.parse(t.start_time)) / 3600_000);
 
   const count = (s: VehicleStatus) => lk.vehicles.filter(v => v.status === s).length;
-  const list = lk.vehicles.filter(v => (filter === 'all' || v.status === filter) && vf.match(v.id, v.driver_id) &&
-    (!q || `${v.plate} ${v.type} ${lk.person(v.driver_id)}`.toLowerCase().includes(q.toLowerCase())));
+  const list = lk.vehicles.filter(v => vf.match(v.id, v.driver_id, v.status));
 
   return (
     <>
@@ -37,12 +34,7 @@ export default function Fleet({ lk }: { lk: Lookups }) {
         <div className="card"><b>{count('inactive')}</b><span>Ngưng hoạt động</span></div>
       </div>
       {vf.ui}
-      <div className="row" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
-        <input placeholder="Tìm biển số, loại xe, tài xế…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
-        {(['all', 'on_duty', 'ready', 'maintenance', 'repair', 'inactive'] as const).map(f => (
-          <button key={f} className={`btn ${filter === f ? '' : 'ghost'}`} onClick={() => setFilter(f)}>{f === 'all' ? 'Tất cả' : STATUS[f]}</button>
-        ))}
-      </div>
+      <p className="muted" style={{ marginTop: 0 }}>Hiển thị <b>{list.length}</b> / {lk.vehicles.length} xe</p>
       {msg && <p style={{ color: 'var(--success)' }}>{msg}</p>}
       <div className="grid">
         {list.map(v => {

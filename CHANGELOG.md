@@ -8,6 +8,10 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 - **Bộ lọc theo loại xe, biển số, tài xế ở các trang quản lý** _(Quản lý)_ — Đội xe, Duyệt nhiên liệu/điện và Tai nạn có thêm bộ lọc Loại xe (Van Gaz, Van điện…), Năng lượng, Biển số, Tài xế và nút Xóa lọc; số đếm theo từng trạng thái cập nhật theo bộ lọc. Nhật ký ca thêm bộ lọc Biển số (đã có sẵn Loại xe, Năng lượng, Tài xế).
 
+### 🔧 Chỉnh sửa
+
+- **Bộ lọc gõ + chọn nhiều giá trị; trạng thái thành bộ lọc; bỏ ô tìm kiếm** _(Quản lý)_ — Các ô lọc ở Đội xe, Nhật ký ca, Duyệt nhiên liệu/điện, Tai nạn giờ vừa gõ để tìm (không cần dấu) vừa chọn nhiều giá trị, hiện dạng thẻ nhỏ; để trống là tất cả. Các nút trạng thái (Đang vận hành, Sẵn sàng… / Chờ duyệt… / Mới…) chuyển thành bộ lọc Trạng thái chọn nhiều. Bỏ ô 'Tìm biển số, loại xe, tài xế' (đã có lọc Biển số, Loại xe, Tài xế). Duyệt nhiên liệu mặc định lọc 'Chờ duyệt', Tai nạn mặc định lọc 'Mới'.
+
 ## 08/10/2026 (Thứ năm)
 
 ### 🔧 Chỉnh sửa

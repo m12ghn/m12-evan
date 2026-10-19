@@ -4,6 +4,7 @@ import type { Lookups } from '../../lib/useLookups';
 import SignedPhotos, { START_LABELS, TRIP_LABELS } from '../../components/SignedPhotos';
 import type { PhotoMap } from '../../lib/storage';
 import { downloadXlsx, type Cell } from '../../lib/excel';
+import { useVehicleFilter } from '../../components/VehicleFilter';
 import { dayAfter, dayStart, fetchAll, ymd } from '../../lib/dates';
 
 interface TripRow {
@@ -25,12 +26,7 @@ export default function Trips({ lk }: { lk: Lookups }) {
   const [rows, setRows] = useState<TripRow[]>([]);
   const [fills, setFills] = useState<Fill[]>([]);
   const [loading, setLoading] = useState(false);
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState<'all' | 'on_duty' | 'completed'>('all');
-  const [energy, setEnergy] = useState<'all' | 'fuel' | 'electric'>('all');
-  const [vtype, setVtype] = useState('');
-  const [driver, setDriver] = useState('');
-  const [plateId, setPlateId] = useState('');
+  const vf = useVehicleFilter(lk, { statuses: [{ value: 'on_duty', label: 'Đang chạy' }, { value: 'completed', label: 'Hoàn tất' }], statusLabel: 'Trạng thái ca' });
   const [issueOnly, setIssueOnly] = useState(false);
   const [overOnly, setOverOnly] = useState(false);
   const [open, setOpen] = useState('');
@@ -52,20 +48,8 @@ export default function Trips({ lk }: { lk: Lookups }) {
     return m;
   }, [fills]);
 
-  const vehicleTypes = useMemo(() => [...new Set(lk.vehicles.map(v => v.type).filter(Boolean))].sort() as string[], [lk.vehicles]);
-  const drivers = useMemo(() => lk.people.filter(p => rows.some(r => r.driver_id === p.id)), [lk.people, rows]);
-
   const isOver = (t: TripRow) => { const v = lk.vehicle(t.vehicle_id); return t.energy_rate != null && v != null && t.energy_rate > v.std_rate * 1.15; };
-  const list = rows.filter(t => {
-    const v = lk.vehicle(t.vehicle_id);
-    return (status === 'all' || t.status === status)
-      && (energy === 'all' || v?.energy_type === energy)
-      && (!vtype || v?.type === vtype)
-      && (!plateId || t.vehicle_id === plateId)
-      && (!driver || t.driver_id === driver)
-      && (!issueOnly || t.has_damage) && (!overOnly || isOver(t))
-      && (!q || `${lk.plate(t.vehicle_id)} ${lk.person(t.driver_id)}`.toLowerCase().includes(q.toLowerCase()));
-  });
+  const list = rows.filter(t => vf.match(t.vehicle_id, t.driver_id, t.status) && (!issueOnly || t.has_damage) && (!overOnly || isOver(t)));
 
   const totalKm = list.reduce((s, t) => s + (t.km_driven ?? 0), 0);
   const totalMoney = list.reduce((s, t) => s + (fillOf.get(t.id)?.money ?? 0), 0);
@@ -103,14 +87,10 @@ export default function Trips({ lk }: { lk: Lookups }) {
       <div className="filters">
         <label>Từ ngày<input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} /></label>
         <label>Đến ngày<input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} /></label>
-        <label>Tìm kiếm<input placeholder="Biển số / tài xế" value={q} onChange={e => setQ(e.target.value)} /></label>
-        <label>Loại xe<select value={vtype} onChange={e => setVtype(e.target.value)}><option value="">Tất cả</option>{vehicleTypes.map(t => <option key={t}>{t}</option>)}</select></label>
-        <label>Biển số<select value={plateId} onChange={e => setPlateId(e.target.value)}><option value="">Tất cả</option>{lk.vehicles.map(v => <option key={v.id} value={v.id}>{v.plate}</option>)}</select></label>
-        <label>Năng lượng<select value={energy} onChange={e => setEnergy(e.target.value as typeof energy)}><option value="all">Tất cả</option><option value="fuel">Xăng / Dầu</option><option value="electric">Điện</option></select></label>
-        <label>Tài xế<select value={driver} onChange={e => setDriver(e.target.value)}><option value="">Tất cả</option>{drivers.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.email}</option>)}</select></label>
-        <label>Trạng thái ca<select value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="all">Tất cả</option><option value="on_duty">Đang chạy</option><option value="completed">Hoàn tất</option></select></label>
       </div>
-      <div className="row" style={{ flexWrap: 'wrap', margin: '12px 0' }}>
+      <div style={{ height: 10 }} />
+      {vf.ui}
+      <div className="row" style={{ flexWrap: 'wrap', margin: '4px 0 12px' }}>
         <label className="row"><input type="checkbox" checked={issueOnly} onChange={e => setIssueOnly(e.target.checked)} /> Chỉ ca có sự cố</label>
         <label className="row"><input type="checkbox" checked={overOnly} onChange={e => setOverOnly(e.target.checked)} /> Chỉ ca vượt định mức</label>
         <span style={{ flex: 1 }} />

@@ -3,6 +3,12 @@
     "date": "2026-10-19",
     "items": [
       {
+        "type": "change",
+        "scope": "manager",
+        "title": "Bộ lọc gõ + chọn nhiều giá trị; trạng thái thành bộ lọc; bỏ ô tìm kiếm",
+        "detail": "Các ô lọc ở Đội xe, Nhật ký ca, Duyệt nhiên liệu/điện, Tai nạn giờ vừa gõ để tìm (không cần dấu) vừa chọn nhiều giá trị, hiện dạng thẻ nhỏ; để trống là tất cả. Các nút trạng thái (Đang vận hành, Sẵn sàng… / Chờ duyệt… / Mới…) chuyển thành bộ lọc Trạng thái chọn nhiều. Bỏ ô 'Tìm biển số, loại xe, tài xế' (đã có lọc Biển số, Loại xe, Tài xế). Duyệt nhiên liệu mặc định lọc 'Chờ duyệt', Tai nạn mặc định lọc 'Mới'."
+      },
+      {
         "type": "new",
         "scope": "manager",
         "title": "Bộ lọc theo loại xe, biển số, tài xế ở các trang quản lý",

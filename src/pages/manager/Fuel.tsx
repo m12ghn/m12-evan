@@ -18,10 +18,9 @@ const STATUS = { pending: '⏳ Chờ duyệt', approved: '✓ Đã duyệt', rej
 export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => void }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [tripVehicle, setTripVehicle] = useState<Record<string, string>>({});
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
-  const vf = useVehicleFilter(lk);
+  const vf = useVehicleFilter(lk, { statuses: (Object.keys(STATUS) as (keyof typeof STATUS)[]).map(k => ({ value: k, label: STATUS[k] })), defaultStatuses: ['pending'] });
 
   const load = useCallback(async () => {
     const { data: r } = await supabase.from('refuels').select('*').order('created_at', { ascending: false }).limit(200);
@@ -47,18 +46,11 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
     await load(); onChanged();
   }
 
-  const inScope = rows.filter(r => vf.match(tripVehicle[r.trip_id], r.driver_id));
-  const list = inScope.filter(r => filter === 'all' || r.status === filter);
+  const list = rows.filter(r => vf.match(tripVehicle[r.trip_id], r.driver_id, r.status));
   return (
     <div className="stack">
       {vf.ui}
-      <div className="row" style={{ flexWrap: 'wrap' }}>
-        {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (
-          <button key={f} className={`btn ${filter === f ? '' : 'ghost'}`} onClick={() => setFilter(f)}>
-            {f === 'all' ? 'Tất cả' : STATUS[f]} ({f === 'all' ? inScope.length : inScope.filter(r => r.status === f).length})
-          </button>
-        ))}
-      </div>
+      <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} phiếu</p>
       {error && <p className="error">{error}</p>}
       {list.map(r => {
         const v = lk.vehicle(tripVehicle[r.trip_id]);

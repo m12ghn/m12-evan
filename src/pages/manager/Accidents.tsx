@@ -12,11 +12,10 @@ const STATUS = { new: '🆕 Mới', handling: '🛠️ Đang xử lý', done: '�
 
 export default function Accidents({ lk, onChanged }: { lk: Lookups; onChanged: () => void }) {
   const [rows, setRows] = useState<Row[]>([]);
-  const [filter, setFilter] = useState<'all' | Row['status']>('new');
   const [edit, setEdit] = useState<Record<string, { status: Row['status']; note: string }>>({});
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
-  const vf = useVehicleFilter(lk);
+  const vf = useVehicleFilter(lk, { statuses: (Object.keys(STATUS) as Row['status'][]).map(k => ({ value: k, label: STATUS[k] })), defaultStatuses: ['new'] });
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('accidents').select('*').order('created_at', { ascending: false }).limit(200);
@@ -40,18 +39,11 @@ export default function Accidents({ lk, onChanged }: { lk: Lookups; onChanged: (
     setMsg(`Đã chuyển xe ${lk.plate(r.vehicle_id)} sang "Đang sửa chữa tai nạn"`); lk.reload();
   }
 
-  const inScope = rows.filter(r => vf.match(r.vehicle_id, r.driver_id));
-  const list = inScope.filter(r => filter === 'all' || r.status === filter);
+  const list = rows.filter(r => vf.match(r.vehicle_id, r.driver_id, r.status));
   return (
     <div className="stack">
       {vf.ui}
-      <div className="row" style={{ flexWrap: 'wrap' }}>
-        {(['new', 'handling', 'done', 'all'] as const).map(f => (
-          <button key={f} className={`btn ${filter === f ? '' : 'ghost'}`} onClick={() => setFilter(f)}>
-            {f === 'all' ? 'Tất cả' : STATUS[f]} ({f === 'all' ? inScope.length : inScope.filter(r => r.status === f).length})
-          </button>
-        ))}
-      </div>
+      <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} báo cáo</p>
       {error && <p className="error">{error}</p>}{msg && <p style={{ color: 'var(--success)' }}>{msg}</p>}
       {list.map(r => {
         const v = lk.vehicle(r.vehicle_id ?? '');
