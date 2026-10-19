@@ -34,8 +34,7 @@ function AccidentCard({ r, ups, lk, onSaved, onRepair }: { r: Row; ups: Upd[]; l
   const { session } = useAuth();
   const uid = session?.user.id ?? '';
   const v = lk.vehicle(r.vehicle_id ?? '');
-  const [mode, setMode] = useState<'update' | 'insurance'>('update');
-  const [insOpen, setInsOpen] = useState(false);
+  const [mode, setMode] = useState<'update' | 'insurance' | null>(null); // null = form đang đóng
   const [status, setStatus] = useState<Row['status']>(r.status);
   const [note, setNote] = useState('');
   const [photos, setPhotos] = useState<Blob[]>([]);
@@ -43,9 +42,10 @@ function AccidentCard({ r, ups, lk, onSaved, onRepair }: { r: Row; ups: Upd[]; l
   const [error, setError] = useState('');
   useEffect(() => { setStatus(r.status); }, [r.status]);
 
+  const open = (m: 'update' | 'insurance') => { setMode(m); setNote(''); setPhotos([]); setError(''); setStatus(r.status); };
   const progress = ups.filter(u => u.kind === 'update');
   const insurance = ups.filter(u => u.kind === 'insurance');
-  const canSave = mode === 'insurance' ? note.trim() !== '' || photos.length > 0 : note.trim() !== '' || photos.length > 0 || status !== r.status;
+  const canSave = mode === null ? false : mode === 'insurance' ? note.trim() !== '' || photos.length > 0 : note.trim() !== '' || photos.length > 0 || status !== r.status;
 
   async function save() {
     setBusy(true); setError('');
@@ -53,10 +53,10 @@ function AccidentCard({ r, ups, lk, onSaved, onRepair }: { r: Row; ups: Upd[]; l
       const up = await uploadPhotos(uid, 'accident', photos.map((b, i) => [i, b] as [number, Blob]));
       const paths = photos.map((_, i) => up[i]);
       const { error: e } = await supabase.rpc('add_accident_update', {
-        p_accident: r.id, p_kind: mode, p_note: note.trim() || null, p_photos: paths, p_status: mode === 'update' ? status : null,
+        p_accident: r.id, p_kind: mode ?? 'update', p_note: note.trim() || null, p_photos: paths, p_status: mode === 'update' ? status : null,
       });
       if (e) throw e;
-      setNote(''); setPhotos([]); setInsOpen(false); setMode('update'); onSaved();
+      setNote(''); setPhotos([]); setMode(null); onSaved();
     } catch (e) { setError((e as Error).message); }
     setBusy(false);
   }
@@ -75,7 +75,7 @@ function AccidentCard({ r, ups, lk, onSaved, onRepair }: { r: Row; ups: Upd[]; l
       {error && <p className="error">{error}</p>}
       <div className="row" style={{ flexWrap: 'wrap' }}>
         <button className="btn" disabled={!canSave || busy} onClick={save}>{busy ? 'Đang lưu…' : mode === 'insurance' ? 'Lưu bảo hiểm' : 'Lưu cập nhật'}</button>
-        {mode === 'insurance' && <button className="btn ghost" disabled={busy} onClick={() => { setInsOpen(false); setMode('update'); setNote(''); setPhotos([]); }}>Hủy</button>}
+        <button className="btn ghost" disabled={busy} onClick={() => { setMode(null); setNote(''); setPhotos([]); setError(''); }}>Hủy</button>
       </div>
     </div>
   );
@@ -91,28 +91,24 @@ function AccidentCard({ r, ups, lk, onSaved, onRepair }: { r: Row; ups: Upd[]; l
       <p><b>Mô tả:</b> {r.description}</p>
       <SignedPhotos photos={photoMap(r.photos)} labels={photoLabels(r.photos)} />
 
-      {(progress.length > 0 || r.manager_note) && (
-        <div className="stack">
-          <h4>Diễn biến xử lý ({progress.length})</h4>
-          {r.manager_note && <small className="muted">Ghi chú trước đây: {r.manager_note}</small>}
-          {progress.map(u => <Entry key={u.id} u={u} lk={lk} />)}
-        </div>
-      )}
+      <div className="stack">
+        <div className="row between"><h4 style={{ margin: 0 }}>Diễn biến xử lý ({progress.length})</h4>
+          {mode === null && <button className="btn" onClick={() => open('update')}>✏️ Cập nhật</button>}</div>
+        {r.manager_note && <small className="muted">Ghi chú trước đây: {r.manager_note}</small>}
+        {progress.length === 0 && !r.manager_note && <small className="muted">Chưa có cập nhật nào</small>}
+        {progress.map(u => <Entry key={u.id} u={u} lk={lk} />)}
+      </div>
 
       <div className="stack">
         <div className="row between"><h4 style={{ margin: 0 }}>🛡️ Bảo hiểm ({insurance.length})</h4>
-          {!insOpen && <button className="btn ghost" onClick={() => { setInsOpen(true); setMode('insurance'); setNote(''); setPhotos([]); setError(''); }}>Cập nhật bảo hiểm</button>}</div>
-        {insurance.length === 0 && !insOpen && <small className="muted">Chưa có thông tin bảo hiểm</small>}
+          {mode === null && <button className="btn ghost" onClick={() => open('insurance')}>🛡️ Cập nhật bảo hiểm</button>}</div>
+        {insurance.length === 0 && <small className="muted">Chưa có thông tin bảo hiểm</small>}
         {insurance.map(u => <Entry key={u.id} u={u} lk={lk} />)}
       </div>
 
-      {insOpen ? form : (
-        <>
-          {form}
-          {v && v.status !== 'repair' && v.status !== 'on_duty' && (
-            <div><button className="btn ghost" onClick={onRepair}>🔧 Chuyển xe sang đang sửa chữa</button></div>
-          )}
-        </>
+      {mode !== null && form}
+      {v && v.status !== 'repair' && v.status !== 'on_duty' && (
+        <div><button className="btn ghost" onClick={onRepair}>🔧 Chuyển xe sang đang sửa chữa</button></div>
       )}
     </div>
   );

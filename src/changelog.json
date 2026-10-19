@@ -5,6 +5,12 @@
       {
         "type": "change",
         "scope": "manager",
+        "title": "Tai nạn: khung cập nhật chỉ hiện khi bấm nút",
+        "detail": "Khung nhập cập nhật diễn biến và bảo hiểm được ẩn; bấm ✏️ Cập nhật (mục Diễn biến xử lý) hoặc 🛡️ Cập nhật bảo hiểm mới hiện ra, có nút Hủy để đóng lại. Lưu xong tự đóng."
+      },
+      {
+        "type": "change",
+        "scope": "manager",
         "title": "Tai nạn: Lưu thành nhật ký cập nhật từng lần (có thời gian, người cập nhật, ảnh)",
         "detail": "Thay nút Lưu cũ: mỗi lần bấm Lưu cập nhật tạo một dòng mới dưới phần mô tả gồm thời gian, người cập nhật, nội dung, ảnh bổ sung (tối đa 6) và trạng thái nếu có đổi. Các dòng đã lưu không sửa hay xóa được. Ghi chú cũ vẫn hiển thị."
       },
