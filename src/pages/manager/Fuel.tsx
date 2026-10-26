@@ -4,6 +4,8 @@ import type { Lookups } from '../../lib/useLookups';
 import { useVehicleFilter } from '../../components/VehicleFilter';
 import SignedPhotos from '../../components/SignedPhotos';
 import { refuelSlots } from '../../lib/types';
+import { downloadCsv, downloadXlsx, type Cell } from '../../lib/excel';
+import { dayAfter, dayStart, fetchAll, ymd } from '../../lib/dates';
 
 interface Row {
   id: string; trip_id: string; driver_id: string; created_at: string; energy_type: 'fuel' | 'electric';
@@ -20,6 +22,9 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const [tripVehicle, setTripVehicle] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
+  const [exFrom, setExFrom] = useState(ymd(new Date(Date.now() - 29 * 86400_000)));
+  const [exTo, setExTo] = useState(ymd(new Date()));
+  const [exporting, setExporting] = useState(false);
   const vf = useVehicleFilter(lk, { statuses: (Object.keys(STATUS) as (keyof typeof STATUS)[]).map(k => ({ value: k, label: STATUS[k] })), defaultStatuses: ['pending'] });
 
   const load = useCallback(async () => {
@@ -46,10 +51,42 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
     await load(); onChanged();
   }
 
+  // Xuất các lượt sạc điện trong khoảng ngày (tải riêng, không bị giới hạn 200 phiếu của danh sách); áp dụng bộ lọc loại xe / biển số / tài xế
+  async function exportCharges(kind: 'xlsx' | 'csv') {
+    setExporting(true); setError('');
+    try {
+      const all = await fetchAll<Row>((a, b) => supabase.from('refuels').select('*').eq('energy_type', 'electric').neq('status', 'rejected')
+        .gte('created_at', dayStart(exFrom)).lt('created_at', dayAfter(exTo)).order('created_at').range(a, b));
+      const ids = [...new Set(all.map(x => x.trip_id))];
+      const tv: Record<string, string> = {};
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data: t } = await supabase.from('trips').select('id, vehicle_id').in('id', ids.slice(i, i + 100));
+        (t ?? []).forEach(x => { tv[x.id] = x.vehicle_id; });
+      }
+      const data = all.filter(r => vf.match(tv[r.trip_id], r.driver_id));
+      const out: Cell[][] = [['Ngày/giờ', 'Biển số xe', 'Tên tài xế', 'ODO hiện tại', '% pin trước khi sạc', '% pin sau khi sạc', 'Trạm sạc']];
+      data.forEach(r => out.push([
+        new Date(r.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }), lk.plate(tv[r.trip_id]), lk.person(r.driver_id),
+        r.odo_at_refuel, r.battery_before, r.battery_after, r.station ?? '',
+      ]));
+      if (!data.length) { setError('Không có lượt sạc điện nào trong khoảng ngày và bộ lọc đã chọn'); return; }
+      const name = `luot-sac-dien_${exFrom}_${exTo}`;
+      if (kind === 'csv') downloadCsv(`${name}.csv`, out);
+      else await downloadXlsx(`${name}.xlsx`, [{ name: 'Lượt sạc điện', rows: out, widths: [18, 13, 22, 13, 18, 18, 24] }]);
+    } catch (e) { setError((e as Error).message); }
+    setExporting(false);
+  }
+
   const list = rows.filter(r => vf.match(tripVehicle[r.trip_id], r.driver_id, r.status));
   return (
     <div className="stack">
       {vf.ui}
+      <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label className="stack" style={{ fontSize: 12 }}>Xuất sạc điện từ<input type="date" value={exFrom} max={exTo} onChange={e => setExFrom(e.target.value)} /></label>
+        <label className="stack" style={{ fontSize: 12 }}>đến<input type="date" value={exTo} min={exFrom} onChange={e => setExTo(e.target.value)} /></label>
+        <button className="btn" disabled={exporting || !exFrom || !exTo || exFrom > exTo} onClick={() => exportCharges('xlsx')}>{exporting ? 'Đang xuất…' : '⬇️ Excel lượt sạc điện'}</button>
+        <button className="btn ghost" disabled={exporting || !exFrom || !exTo || exFrom > exTo} onClick={() => exportCharges('csv')}>⬇️ CSV</button>
+      </div>
       <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} phiếu</p>
       {error && <p className="error">{error}</p>}
       {list.map(r => {

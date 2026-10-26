@@ -2,6 +2,12 @@
 
 _File này được tạo tự động từ `src/changelog.json` (chạy `npm run changelog`). Cùng nội dung hiển thị trong app: trang Quản lý → tab 📝 Cập nhật._
 
+## 26/10/2026 (Thứ hai)
+
+### ✨ Tính năng mới
+
+- **Duyệt nhiên liệu/điện: tải Excel / CSV các lượt sạc điện** _(Quản lý)_ — Chọn khoảng ngày rồi bấm Excel hoặc CSV: ngày/giờ, biển số xe, tên tài xế, ODO hiện tại, % pin trước và sau khi sạc, trạm sạc. Áp dụng bộ lọc loại xe / biển số / tài xế đang chọn; không tính phiếu bị từ chối.
+
 ## 19/10/2026 (Thứ hai)
 
 ### ✨ Tính năng mới

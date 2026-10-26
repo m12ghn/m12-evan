@@ -1,5 +1,16 @@
 [
   {
+    "date": "2026-10-26",
+    "items": [
+      {
+        "type": "new",
+        "scope": "manager",
+        "title": "Duyệt nhiên liệu/điện: tải Excel / CSV các lượt sạc điện",
+        "detail": "Chọn khoảng ngày rồi bấm Excel hoặc CSV: ngày/giờ, biển số xe, tên tài xế, ODO hiện tại, % pin trước và sau khi sạc, trạm sạc. Áp dụng bộ lọc loại xe / biển số / tài xế đang chọn; không tính phiếu bị từ chối."
+      }
+    ]
+  },
+  {
     "date": "2026-10-19",
     "items": [
       {
