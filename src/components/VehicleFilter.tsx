@@ -12,9 +12,9 @@ export function useVehicleFilter(lk: Lookups, opts?: { statuses?: Opt[]; default
   const [drivers, setDrivers] = useState<string[]>([]);
   const active = Boolean(statuses.length || types.length || energies.length || plates.length || drivers.length);
 
-  /** vehicleId có thể rỗng (vd. báo cáo tai nạn chưa chọn xe); status chỉ dùng khi trang có bộ lọc trạng thái */
-  const match = (vehicleId: string | null | undefined, driverId: string | null | undefined, status?: string) => {
-    if (statuses.length && !(status && statuses.includes(status))) return false;
+  /** vehicleId có thể rỗng (vd. báo cáo tai nạn chưa chọn xe); status chỉ dùng khi trang có bộ lọc trạng thái; skipStatus = bỏ qua bộ lọc trạng thái (vd. khi xuất file) */
+  const match = (vehicleId: string | null | undefined, driverId: string | null | undefined, status?: string, skipStatus = false) => {
+    if (!skipStatus && statuses.length && !(status && statuses.includes(status))) return false;
     if (types.length || energies.length || plates.length) {
       const v = vehicleId ? lk.vehicle(vehicleId) : undefined;
       if (!v) return false;

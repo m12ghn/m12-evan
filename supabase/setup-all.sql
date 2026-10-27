@@ -5,6 +5,7 @@ drop table if exists public.private_config cascade;
 drop table if exists public.telegram_log cascade;
 drop table if exists public.app_settings cascade;
 drop table if exists public.audit_log cascade;
+drop table if exists public.refuel_ai cascade;
 drop table if exists public.accidents cascade;
 drop table if exists public.refuels cascade;
 drop table if exists public.trips cascade;
@@ -545,6 +546,27 @@ grant execute on function public.add_accident_update(uuid, text, text, jsonb, te
 drop trigger if exists audit_accident_updates on public.accident_updates;
 create trigger audit_accident_updates after insert or update or delete on public.accident_updates
   for each row execute function public.audit_row();
+
+-- 5i. Kết quả AI đọc hóa đơn sạc điện
+create table if not exists public.refuel_ai (
+  refuel_id uuid primary key references public.refuels(id) on delete cascade,
+  status text not null check (status in ('ok','unreadable','error')),  -- ok = đọc được hóa đơn; unreadable = không đọc được (mặc định Sạc tại kho M12); error = lỗi AI, sẽ thử lại
+  station text,            -- tên trạm sạc (không đọc được → 'Sạc tại kho M12')
+  amount numeric,          -- thành tiền trên hóa đơn (đ)
+  kwh numeric,             -- điện năng trên hóa đơn
+  charged_at text,         -- ngày giờ ghi trên hóa đơn (nguyên văn)
+  invoice_no text,
+  raw jsonb,
+  model text,
+  error text,
+  created_at timestamptz not null default now()
+);
+alter table public.refuel_ai enable row level security;
+drop policy if exists "refuel_ai: manager xem" on public.refuel_ai;
+create policy "refuel_ai: manager xem" on public.refuel_ai for select using ((select public.is_manager()));
+-- Chỉ máy chủ (service_role) ghi; không ai sửa qua app
+revoke all on public.refuel_ai from anon, authenticated;
+grant select on public.refuel_ai to authenticated;
 
 -- 5g. Quản lý đóng ca thay tài xế
 create or replace function public.manager_close_trip(

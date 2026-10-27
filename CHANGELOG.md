@@ -2,6 +2,16 @@
 
 _File này được tạo tự động từ `src/changelog.json` (chạy `npm run changelog`). Cùng nội dung hiển thị trong app: trang Quản lý → tab 📝 Cập nhật._
 
+## 27/10/2026 (Thứ ba)
+
+### ✨ Tính năng mới
+
+- **AI đọc ảnh hóa đơn / lịch sử sạc điện** _(Quản lý)_ — Nút 🤖 AI đọc hóa đơn (theo khoảng ngày đang chọn) dùng Claude đọc ảnh hóa đơn: tên trạm, thành tiền, kWh, ngày giờ. Không đọc được hóa đơn thì mặc định trạm là 'Sạc tại kho M12'. Kết quả lưu vào bảng refuel_ai và xuất kèm trong file Excel/CSV (cột Trạm sạc, đối chiếu thành tiền/kWh trên hóa đơn). Cần biến ANTHROPIC_API_KEY trên Vercel và migration 015.
+
+### 🐞 Sửa lỗi
+
+- **Sửa lỗi nút tải lượt sạc điện báo 'không có lượt sạc nào'; thêm cột Thành tiền** _(Quản lý)_ — Lỗi do bộ lọc Trạng thái mặc định (Chờ duyệt) vô tình áp dụng cho file xuất. Nay file bỏ qua bộ lọc Trạng thái. Thêm cột Thành tiền (đ).
+
 ## 26/10/2026 (Thứ hai)
 
 ### ✨ Tính năng mới

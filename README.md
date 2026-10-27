@@ -53,3 +53,6 @@ Chạy `supabase/migration-009-telegram-trigger.sql` (cần bật extension `pg_
 ## Phân quyền
 - **driver**: trang tài xế. **manager** (admin): đội xe, nhật ký ca, duyệt, tai nạn, người dùng, nhật ký thao tác (không thấy cấu hình Telegram/bí mật/cập nhật app).
 - **dev**: toàn quyền, thêm Cài đặt Telegram, tab Cập nhật. Chạy `migration-013-dev-role.sql`, tạo tài khoản rồi nâng: `update public.profiles set role='dev' where email='dev@fleetops.local';`
+
+## AI đọc hóa đơn sạc điện
+Chạy `supabase/migration-015-refuel-ai.sql`, thêm biến Vercel `ANTHROPIC_API_KEY` (tùy chọn `ANTHROPIC_MODEL`, mặc định `claude-sonnet-5-5`) rồi Redeploy. Trong Duyệt nhiên liệu/điện: chọn khoảng ngày → 🤖 AI đọc hóa đơn → tải Excel/CSV. Không đọc được hóa đơn → trạm mặc định "Sạc tại kho M12".

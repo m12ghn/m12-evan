@@ -4,6 +4,7 @@ import type { Lookups } from '../../lib/useLookups';
 import { useVehicleFilter } from '../../components/VehicleFilter';
 import SignedPhotos from '../../components/SignedPhotos';
 import { refuelSlots } from '../../lib/types';
+import { aiApi } from '../../lib/aiApi';
 import { downloadCsv, downloadXlsx, type Cell } from '../../lib/excel';
 import { dayAfter, dayStart, fetchAll, ymd } from '../../lib/dates';
 
@@ -14,6 +15,7 @@ interface Row {
   battery_before: number | null; battery_after: number | null; charge_minutes: number | null;
   status: 'pending' | 'approved' | 'rejected'; manager_note: string | null;
 }
+interface AiRow { refuel_id: string; status: 'ok' | 'unreadable' | 'error'; station: string | null; amount: number | null; kwh: number | null }
 const money = (n: number) => Math.round(n).toLocaleString('vi-VN') + ' đ';
 const STATUS = { pending: '⏳ Chờ duyệt', approved: '✓ Đã duyệt', rejected: '❌ Từ chối' } as const;
 
@@ -25,6 +27,25 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const [exFrom, setExFrom] = useState(ymd(new Date(Date.now() - 29 * 86400_000)));
   const [exTo, setExTo] = useState(ymd(new Date()));
   const [exporting, setExporting] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMsg, setAiMsg] = useState('');
+
+  // AI đọc ảnh hóa đơn / lịch sử sạc của các lượt sạc điện trong khoảng ngày đang chọn (chạy từng lô nhỏ ở máy chủ)
+  async function runAi() {
+    setAiBusy(true); setError(''); setAiMsg('Đang bắt đầu…');
+    let ok = 0, unreadable = 0, total = 0;
+    try {
+      for (let i = 0; i < 300; i++) {
+        const r = await aiApi<{ total: number; processed: number; ok: number; unreadable: number; error: number; remaining: number }>({ from: exFrom, to: exTo });
+        ok += r.ok; unreadable += r.unreadable; total = r.total;
+        setAiMsg(`Đang đọc… đã đọc ${ok + unreadable}/${total} (đọc được ${ok}, không đọc được ${unreadable}), còn ${r.remaining}`);
+        if (r.remaining === 0) break;
+        if (r.ok + r.unreadable === 0) throw new Error('AI đang báo lỗi liên tục (kiểm tra ANTHROPIC_API_KEY / hạn mức). Đã đọc được ' + (ok + unreadable) + ' phiếu.');
+      }
+      setAiMsg(`Xong: ${total} lượt sạc — đọc được hóa đơn ${ok}, không đọc được (mặc định Sạc tại kho M12) ${unreadable}. Bấm Excel/CSV để tải.`);
+    } catch (e) { setError((e as Error).message); setAiMsg(''); }
+    setAiBusy(false);
+  }
   const vf = useVehicleFilter(lk, { statuses: (Object.keys(STATUS) as (keyof typeof STATUS)[]).map(k => ({ value: k, label: STATUS[k] })), defaultStatuses: ['pending'] });
 
   const load = useCallback(async () => {
@@ -63,16 +84,23 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
         const { data: t } = await supabase.from('trips').select('id, vehicle_id').in('id', ids.slice(i, i + 100));
         (t ?? []).forEach(x => { tv[x.id] = x.vehicle_id; });
       }
-      const data = all.filter(r => vf.match(tv[r.trip_id], r.driver_id));
-      const out: Cell[][] = [['Ngày/giờ', 'Biển số xe', 'Tên tài xế', 'ODO hiện tại', '% pin trước khi sạc', '% pin sau khi sạc', 'Trạm sạc']];
-      data.forEach(r => out.push([
+      const data = all.filter(r => vf.match(tv[r.trip_id], r.driver_id, r.status, true)); // bộ lọc Trạng thái không áp dụng cho file xuất
+      // Kết quả AI đọc hóa đơn (nếu đã chạy): trạm sạc + đối chiếu số tiền / kWh trên hóa đơn
+      const ai: Record<string, AiRow> = {};
+      for (let i = 0; i < data.length; i += 100) {
+        const { data: a } = await supabase.from('refuel_ai').select('refuel_id, status, station, amount, kwh').in('refuel_id', data.slice(i, i + 100).map(x => x.id));
+        ((a as AiRow[]) ?? []).forEach(x => { ai[x.refuel_id] = x; });
+      }
+      const note = (a?: AiRow) => !a ? 'Chưa đọc hóa đơn' : a.status === 'ok' ? 'Đọc từ hóa đơn' : a.status === 'unreadable' ? 'Không đọc được hóa đơn → mặc định' : 'AI lỗi, cần đọc lại';
+      const out: Cell[][] = [['Ngày/giờ', 'Biển số xe', 'Tên tài xế', 'ODO hiện tại', '% pin trước khi sạc', '% pin sau khi sạc', 'Trạm sạc', 'Thành tiền (đ)', 'Thành tiền trên hóa đơn (AI)', 'kWh trên hóa đơn (AI)', 'Ghi chú AI']];
+      data.forEach(r => { const a = ai[r.id]; out.push([
         new Date(r.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }), lk.plate(tv[r.trip_id]), lk.person(r.driver_id),
-        r.odo_at_refuel, r.battery_before, r.battery_after, r.station ?? '',
-      ]));
+        r.odo_at_refuel, r.battery_before, r.battery_after, a?.station ?? r.station ?? '', Math.round(r.total_amount), a?.amount ?? null, a?.kwh ?? null, note(a),
+      ]); });
       if (!data.length) { setError('Không có lượt sạc điện nào trong khoảng ngày và bộ lọc đã chọn'); return; }
       const name = `luot-sac-dien_${exFrom}_${exTo}`;
       if (kind === 'csv') downloadCsv(`${name}.csv`, out);
-      else await downloadXlsx(`${name}.xlsx`, [{ name: 'Lượt sạc điện', rows: out, widths: [18, 13, 22, 13, 18, 18, 24] }]);
+      else await downloadXlsx(`${name}.xlsx`, [{ name: 'Lượt sạc điện', rows: out, widths: [18, 13, 22, 13, 18, 18, 30, 14, 20, 18, 30] }]);
     } catch (e) { setError((e as Error).message); }
     setExporting(false);
   }
@@ -86,7 +114,9 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
         <label className="stack" style={{ fontSize: 12 }}>đến<input type="date" value={exTo} min={exFrom} onChange={e => setExTo(e.target.value)} /></label>
         <button className="btn" disabled={exporting || !exFrom || !exTo || exFrom > exTo} onClick={() => exportCharges('xlsx')}>{exporting ? 'Đang xuất…' : '⬇️ Excel lượt sạc điện'}</button>
         <button className="btn ghost" disabled={exporting || !exFrom || !exTo || exFrom > exTo} onClick={() => exportCharges('csv')}>⬇️ CSV</button>
+        <button className="btn ghost" disabled={aiBusy || !exFrom || !exTo || exFrom > exTo} onClick={runAi}>{aiBusy ? 'AI đang đọc…' : '🤖 AI đọc hóa đơn'}</button>
       </div>
+      {aiMsg && <p className="muted" style={{ margin: 0 }}>{aiMsg}</p>}
       <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} phiếu</p>
       {error && <p className="error">{error}</p>}
       {list.map(r => {
