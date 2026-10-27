@@ -9,6 +9,10 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 - **Tải ảnh hóa đơn sạc điện về máy (ZIP)** _(Quản lý)_ — Duyệt nhiên liệu/điện: chọn khoảng ngày rồi bấm 📦 Tải ảnh (ZIP): ảnh hóa đơn / lịch sử sạc của từng lượt sạc (tùy chọn kèm ảnh trước/sau sạc), đặt tên theo ngày giờ_biển số_tài xế, kèm danh-muc.csv. Chia nhiều file ZIP nếu nhiều ảnh. Áp dụng bộ lọc loại xe / biển số / tài xế.
 - **AI đọc ảnh hóa đơn / lịch sử sạc điện** _(Quản lý)_ — Nút 🤖 AI đọc hóa đơn (theo khoảng ngày đang chọn) dùng Claude đọc ảnh hóa đơn: tên trạm, thành tiền, kWh, ngày giờ. Không đọc được hóa đơn thì mặc định trạm là 'Sạc tại kho M12'. Kết quả lưu vào bảng refuel_ai và xuất kèm trong file Excel/CSV (cột Trạm sạc, đối chiếu thành tiền/kWh trên hóa đơn). Cần biến ANTHROPIC_API_KEY trên Vercel và migration 015.
 
+### 🔧 Chỉnh sửa
+
+- **AI đọc hóa đơn: hỗ trợ cả Gemini** _(Quản lý)_ — Có thể dùng GEMINI_API_KEY (mặc định gemini-2.5-flash, đổi bằng GEMINI_MODEL) thay cho ANTHROPIC_API_KEY. Có cả hai khóa thì đặt AI_PROVIDER=gemini để ép dùng Gemini.
+
 ### 🐞 Sửa lỗi
 
 - **Sửa lỗi nút tải lượt sạc điện báo 'không có lượt sạc nào'; thêm cột Thành tiền** _(Quản lý)_ — Lỗi do bộ lọc Trạng thái mặc định (Chờ duyệt) vô tình áp dụng cho file xuất. Nay file bỏ qua bộ lọc Trạng thái. Thêm cột Thành tiền (đ).

@@ -1,7 +1,7 @@
 // Vercel Serverless Function: AI đọc ảnh hóa đơn / lịch sử sạc điện của các phiếu sạc trong khoảng ngày, lưu vào bảng refuel_ai.
-// Biến môi trường (Vercel, KHÔNG dùng tiền tố VITE_): ANTHROPIC_API_KEY (bắt buộc), ANTHROPIC_MODEL (tùy chọn), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Biến môi trường (Vercel, KHÔNG dùng tiền tố VITE_): ANTHROPIC_API_KEY hoặc GEMINI_API_KEY (một trong hai; AI_PROVIDER=gemini để ép dùng Gemini), ANTHROPIC_MODEL (tùy chọn), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 import { createClient } from '@supabase/supabase-js';
-import { readReceipt, toRecord } from './_extract.js';
+import { readReceipt, readReceiptGemini, toRecord } from './_extract.js';
 
 const fail = (res, code, error) => res.status(code).json({ error });
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -11,10 +11,13 @@ const vnAfter = d => new Date(new Date(`${d}T00:00:00+07:00`).getTime() + 86400_
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return fail(res, 405, 'Method not allowed');
-  const { SUPABASE_URL: url, SUPABASE_SERVICE_ROLE_KEY: key, ANTHROPIC_API_KEY: apiKey } = process.env;
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+  const { SUPABASE_URL: url, SUPABASE_SERVICE_ROLE_KEY: key } = process.env;
+  // Chọn nhà cung cấp AI: có GEMINI_API_KEY (và AI_PROVIDER=gemini hoặc không có khóa Anthropic) → Gemini; ngược lại Claude
+  const gemini = process.env.AI_PROVIDER === 'gemini' || (!process.env.ANTHROPIC_API_KEY && !!process.env.GEMINI_API_KEY);
+  const apiKey = gemini ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY;
+  const model = gemini ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash') : (process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5');
   if (!url || !key) return fail(res, 500, 'Server chưa cấu hình SUPABASE_SERVICE_ROLE_KEY');
-  if (!apiKey) return fail(res, 500, 'Chưa cấu hình ANTHROPIC_API_KEY trên Vercel');
+  if (!apiKey) return fail(res, 500, `Chưa cấu hình ${gemini ? 'GEMINI_API_KEY' : 'ANTHROPIC_API_KEY (hoặc GEMINI_API_KEY)'} trên Vercel`);
 
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -59,7 +62,7 @@ export default async function handler(req, res) {
           if (blob) images.push(Buffer.from(await blob.arrayBuffer()));
         }
         // Không có ảnh hóa đơn nào tải được → coi như không đọc được
-        rec = images.length ? toRecord(await readReceipt({ apiKey, model, images, base: process.env.ANTHROPIC_API_BASE || undefined }), model)
+        rec = images.length ? toRecord(await (gemini ? readReceiptGemini({ apiKey, model, images }) : readReceipt({ apiKey, model, images, base: process.env.ANTHROPIC_API_BASE || undefined })), model)
           : toRecord({ readable: false }, model);
       } catch (e) {
         rec = { status: 'error', station: null, amount: null, kwh: null, charged_at: null, invoice_no: null, raw: null, model, error: String(e.message).slice(0, 250) };

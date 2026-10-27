@@ -3,6 +3,12 @@
     "date": "2026-10-27",
     "items": [
       {
+        "type": "change",
+        "scope": "manager",
+        "title": "AI đọc hóa đơn: hỗ trợ cả Gemini",
+        "detail": "Có thể dùng GEMINI_API_KEY (mặc định gemini-2.5-flash, đổi bằng GEMINI_MODEL) thay cho ANTHROPIC_API_KEY. Có cả hai khóa thì đặt AI_PROVIDER=gemini để ép dùng Gemini."
+      },
+      {
         "type": "new",
         "scope": "manager",
         "title": "Tải ảnh hóa đơn sạc điện về máy (ZIP)",

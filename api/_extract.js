@@ -57,3 +57,25 @@ export async function readReceipt({ apiKey, model, images, base = 'https://api.a
   }
   throw new Error('AI không phản hồi');
 }
+
+/** Gọi Gemini (Google AI) đọc 1–2 ảnh. Cần GEMINI_API_KEY; mô hình mặc định gemini-2.5-flash (đổi bằng GEMINI_MODEL). */
+export async function readReceiptGemini({ apiKey, model, images, base = 'https://generativelanguage.googleapis.com', doFetch = fetch }) {
+  const parts = [];
+  images.forEach((buf, i) => {
+    parts.push({ text: `Ảnh ${i + 1}:` });
+    parts.push({ inline_data: { mime_type: 'image/jpeg', data: buf.toString('base64') } });
+  });
+  parts.push({ text: PROMPT });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const r = await doFetch(`${base}/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'x-goog-api-key': apiKey, 'content-type': 'application/json' },
+      body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0 } }),
+    });
+    if ((r.status === 429 || r.status >= 500) && attempt < 2) { await new Promise(s => setTimeout(s, 1500 * (attempt + 1))); continue; }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(`AI (Gemini) lỗi ${r.status}: ${j?.error?.message ?? 'không rõ'}`.slice(0, 250));
+    return parseAiJson((j.candidates?.[0]?.content?.parts ?? []).map(x => x.text ?? '').join(''));
+  }
+  throw new Error('AI không phản hồi');
+}
