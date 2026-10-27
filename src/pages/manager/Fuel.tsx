@@ -4,6 +4,7 @@ import type { Lookups } from '../../lib/useLookups';
 import { useVehicleFilter } from '../../components/VehicleFilter';
 import SignedPhotos from '../../components/SignedPhotos';
 import { refuelSlots } from '../../lib/types';
+import { downloadPhotoZips, safeName, type ZipItem } from '../../lib/photoZip';
 import { aiApi } from '../../lib/aiApi';
 import { downloadCsv, downloadXlsx, type Cell } from '../../lib/excel';
 import { dayAfter, dayStart, fetchAll, ymd } from '../../lib/dates';
@@ -27,8 +28,46 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const [exFrom, setExFrom] = useState(ymd(new Date(Date.now() - 29 * 86400_000)));
   const [exTo, setExTo] = useState(ymd(new Date()));
   const [exporting, setExporting] = useState(false);
+  const [zipBusy, setZipBusy] = useState(false);
+  const [zipAll, setZipAll] = useState(false);
+  const [zipMsg, setZipMsg] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState('');
+
+  // Tải ảnh hóa đơn / lịch sử sạc (hoặc cả 3 ảnh) của các lượt sạc điện trong khoảng ngày về máy dạng ZIP, kèm danh mục
+  async function downloadPhotos() {
+    setZipBusy(true); setError(''); setZipMsg('Đang lấy danh sách…');
+    try {
+      const all = await fetchAll<Row>((a, b) => supabase.from('refuels').select('*').eq('energy_type', 'electric').neq('status', 'rejected')
+        .gte('created_at', dayStart(exFrom)).lt('created_at', dayAfter(exTo)).order('created_at').range(a, b));
+      const ids = [...new Set(all.map(x => x.trip_id))];
+      const tv: Record<string, string> = {};
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data: t } = await supabase.from('trips').select('id, vehicle_id').in('id', ids.slice(i, i + 100));
+        (t ?? []).forEach(x => { tv[x.id] = x.vehicle_id; });
+      }
+      const data = all.filter(r => vf.match(tv[r.trip_id], r.driver_id, r.status, true));
+      const keys = zipAll ? ['receipt', 'before', 'after'] : ['receipt'];
+      const items: ZipItem[] = [];
+      const index: string[][] = [['Mã phiếu', 'Ngày/giờ', 'Biển số', 'Tài xế', 'ODO', '% pin trước', '% pin sau', 'Thành tiền (đ)', 'Các file ảnh']];
+      data.forEach(r => {
+        const d = new Date(r.created_at);
+        const stamp = `${ymd(d)}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+        const files: string[] = [];
+        keys.forEach(k => {
+          const p = r.photos?.[k];
+          if (!p) return;
+          const name = `${safeName(stamp, lk.plate(tv[r.trip_id]), lk.person(r.driver_id), r.id.slice(0, 6), k)}.jpg`;
+          items.push({ name, path: p }); files.push(name);
+        });
+        index.push([r.id, d.toLocaleString('vi-VN'), lk.plate(tv[r.trip_id]), lk.person(r.driver_id), String(r.odo_at_refuel), String(r.battery_before ?? ''), String(r.battery_after ?? ''), String(Math.round(r.total_amount)), files.join(' | ')]);
+      });
+      if (!items.length) { setError('Không có ảnh nào trong khoảng ngày và bộ lọc đã chọn'); setZipMsg(''); setZipBusy(false); return; }
+      const res = await downloadPhotoZips(`anh-sac-dien_${exFrom}_${exTo}`, items, index, (d, t, part) => setZipMsg(`Đang tải ảnh ${d}/${t} (phần ${part})…`));
+      setZipMsg(`Xong: đã lưu ${res.saved}/${items.length} ảnh từ ${data.length} lượt sạc${res.missing.length ? ` — ${res.missing.length} ảnh không tải được` : ''}. Nhớ cho phép trình duyệt tải nhiều file nếu được hỏi.`);
+    } catch (e) { setError((e as Error).message); setZipMsg(''); }
+    setZipBusy(false);
+  }
 
   // AI đọc ảnh hóa đơn / lịch sử sạc của các lượt sạc điện trong khoảng ngày đang chọn (chạy từng lô nhỏ ở máy chủ)
   async function runAi() {
@@ -114,8 +153,11 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
         <label className="stack" style={{ fontSize: 12 }}>đến<input type="date" value={exTo} min={exFrom} onChange={e => setExTo(e.target.value)} /></label>
         <button className="btn" disabled={exporting || !exFrom || !exTo || exFrom > exTo} onClick={() => exportCharges('xlsx')}>{exporting ? 'Đang xuất…' : '⬇️ Excel lượt sạc điện'}</button>
         <button className="btn ghost" disabled={exporting || !exFrom || !exTo || exFrom > exTo} onClick={() => exportCharges('csv')}>⬇️ CSV</button>
+        <button className="btn ghost" disabled={zipBusy || !exFrom || !exTo || exFrom > exTo} onClick={downloadPhotos}>{zipBusy ? 'Đang tải ảnh…' : '📦 Tải ảnh (ZIP)'}</button>
+        <label className="row" style={{ fontSize: 12 }}><input type="checkbox" checked={zipAll} onChange={e => setZipAll(e.target.checked)} /> cả ảnh trước/sau sạc</label>
         <button className="btn ghost" disabled={aiBusy || !exFrom || !exTo || exFrom > exTo} onClick={runAi}>{aiBusy ? 'AI đang đọc…' : '🤖 AI đọc hóa đơn'}</button>
       </div>
+      {zipMsg && <p className="muted" style={{ margin: 0 }}>{zipMsg}</p>}
       {aiMsg && <p className="muted" style={{ margin: 0 }}>{aiMsg}</p>}
       <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} phiếu</p>
       {error && <p className="error">{error}</p>}
