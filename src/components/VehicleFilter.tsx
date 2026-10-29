@@ -31,6 +31,14 @@ export function useVehicleFilter(lk: Lookups, opts?: { statuses?: Opt[]; default
   const driverOpts = useMemo<Opt[]>(() => lk.people.filter(p => p.role === 'driver')
     .map(p => ({ value: p.id, label: `${p.full_name ?? p.email ?? '—'}${p.active === false ? ' (đã nghỉ)' : ''}` })), [lk.people]);
 
+  const names = (ids: string[], opts: Opt[]) => ids.map(i => opts.find(o => o.value === i)?.label ?? i).join(', ');
+  const parts = [
+    statuses.length && opts?.statuses ? `${opts.statusLabel ?? 'Trạng thái'}: ${names(statuses, opts.statuses)}` : '',
+    types.length ? `Loại xe: ${types.join(', ')}` : '',
+    energies.length ? `Năng lượng: ${energies.map(e => (e === 'electric' ? 'Điện' : 'Xăng / Dầu')).join(', ')}` : '',
+    plates.length ? `Biển số: ${names(plates, plateOpts)}` : '',
+    drivers.length ? `Tài xế: ${names(drivers, driverOpts)}` : '',
+  ].filter(Boolean);
   const ui = (
     <div className="filters" style={{ marginBottom: 12 }}>
       {opts?.statuses && <MultiSelect label={opts.statusLabel ?? 'Trạng thái'} options={opts.statuses} value={statuses} onChange={setStatuses} />}
@@ -38,8 +46,9 @@ export function useVehicleFilter(lk: Lookups, opts?: { statuses?: Opt[]; default
       <MultiSelect label="Năng lượng" options={[{ value: 'fuel', label: 'Xăng / Dầu' }, { value: 'electric', label: 'Điện' }]} value={energies} onChange={setEnergies} />
       <MultiSelect label="Biển số" options={plateOpts} value={plates} onChange={setPlates} />
       <MultiSelect label="Tài xế" options={driverOpts} value={drivers} onChange={setDrivers} />
-      {active && <div className="ms"><span className="ms-label">&nbsp;</span><button className="btn ghost" onClick={reset}>✕ Xóa lọc</button></div>}
+      {active && <div className="ms"><span className="ms-label">&nbsp;</span><button className="btn ghost" onClick={reset}>↺ Đặt lại bộ lọc</button></div>}
+      {parts.length > 0 && <p className="muted" style={{ gridColumn: '1 / -1', margin: 0 }}>Đang xem: {parts.join(' · ')}</p>}
     </div>
   );
-  return { match, ui, active };
+  return { match, ui, active, key: [statuses, types, energies, plates, drivers].map(a => a.join(',')).join('|') };
 }

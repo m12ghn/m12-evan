@@ -6,6 +6,7 @@ import type { Lookups } from '../../lib/useLookups';
 import SignedPhotos from '../../components/SignedPhotos';
 import PhotoList from '../../components/PhotoList';
 import { useVehicleFilter } from '../../components/VehicleFilter';
+import { Empty, Skeleton } from '../../components/ui';
 
 interface Row {
   id: string; created_at: string; driver_id: string; vehicle_id: string | null; trip_id: string | null;
@@ -107,13 +108,14 @@ export default function Accidents({ lk, onChanged }: { lk: Lookups; onChanged: (
   const [rows, setRows] = useState<Row[]>([]);
   const [updates, setUpdates] = useState<Upd[]>([]);
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
   const [msg, setMsg] = useState('');
   const vf = useVehicleFilter(lk, { statuses: (Object.keys(STATUS) as Row['status'][]).map(k => ({ value: k, label: STATUS[k] })), defaultStatuses: ['new'] });
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('accidents').select('*').order('created_at', { ascending: false }).limit(200);
     const list = (data as Row[]) ?? [];
-    setRows(list);
+    setRows(list); setLoaded(true);
     const ids = list.map(x => x.id);
     const all: Upd[] = [];
     for (let i = 0; i < ids.length; i += 100) {   // chia nhóm để URL không quá dài
@@ -138,11 +140,12 @@ export default function Accidents({ lk, onChanged }: { lk: Lookups; onChanged: (
       {vf.ui}
       <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} báo cáo</p>
       {error && <p className="error">{error}</p>}{msg && <p style={{ color: 'var(--success)' }}>{msg}</p>}
+      {!loaded && <Skeleton />}
       {list.map(r => (
         <AccidentCard key={r.id} r={r} lk={lk} ups={updates.filter(u => u.accident_id === r.id)}
           onSaved={() => { setMsg('Đã lưu cập nhật'); load(); onChanged(); }} onRepair={() => markRepair(r)} />
       ))}
-      {list.length === 0 && <p className="muted">Không có báo cáo tai nạn nào</p>}
+      {loaded && list.length === 0 && <Empty>Không có báo cáo tai nạn nào khớp bộ lọc. Hãy đổi bộ lọc (ví dụ thêm trạng thái Đang xử lý / Đã xử lý) hoặc bấm ↺ Đặt lại bộ lọc.</Empty>}
     </div>
   );
 }

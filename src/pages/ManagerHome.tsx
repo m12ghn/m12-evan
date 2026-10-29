@@ -16,7 +16,10 @@ type Tab = 'fleet' | 'trips' | 'fuel' | 'accidents' | 'audit' | 'changelog' | 's
 export default function ManagerHome() {
   const lk = useLookups();
   const isDev = useAuth().profile?.role === 'dev';
-  const [tab, setTab] = useState<Tab>('fleet');
+  const TABS: Tab[] = ['fleet', 'trips', 'fuel', 'accidents', 'audit', 'changelog', 'settings'];
+  const fromHash = (): Tab => { const h = window.location.hash.replace('#', '') as Tab; return TABS.includes(h) ? h : 'fleet'; };
+  const [tab, setTabState] = useState<Tab>(fromHash());   // tab nằm trên đường dẫn (#fleet…) để tải lại trang vẫn ở đúng tab
+  const setTab = (t: Tab) => { setTabState(t); window.history.replaceState(null, '', `#${t}`); };
   const [pending, setPending] = useState(0);
   const [accNew, setAccNew] = useState(0);
 
@@ -39,7 +42,7 @@ export default function ManagerHome() {
           </button>
         ))}
       </nav>
-      {tab === 'fleet' && <Fleet lk={lk} />}
+      {tab === 'fleet' && <Fleet lk={lk} pending={pending} accNew={accNew} />}
       {tab === 'trips' && <Trips lk={lk} />}
       {tab === 'fuel' && <Fuel lk={lk} onChanged={loadPending} />}
       {tab === 'accidents' && <Accidents lk={lk} onChanged={loadPending} />}

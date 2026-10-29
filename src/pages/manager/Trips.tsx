@@ -5,6 +5,7 @@ import SignedPhotos, { START_LABELS, TRIP_LABELS } from '../../components/Signed
 import type { PhotoMap } from '../../lib/storage';
 import { downloadXlsx, type Cell } from '../../lib/excel';
 import { useVehicleFilter } from '../../components/VehicleFilter';
+import { Empty, Pager, Skeleton } from '../../components/ui';
 import { dayAfter, dayStart, fetchAll, ymd } from '../../lib/dates';
 
 interface TripRow {
@@ -30,6 +31,8 @@ export default function Trips({ lk }: { lk: Lookups }) {
   const [issueOnly, setIssueOnly] = useState(false);
   const [overOnly, setOverOnly] = useState(false);
   const [open, setOpen] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE = 50;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,6 +54,9 @@ export default function Trips({ lk }: { lk: Lookups }) {
   const isOver = (t: TripRow) => { const v = lk.vehicle(t.vehicle_id); return t.energy_rate != null && v != null && t.energy_rate > v.std_rate * 1.15; };
   const list = rows.filter(t => vf.match(t.vehicle_id, t.driver_id, t.status) && (!issueOnly || t.has_damage) && (!overOnly || isOver(t)));
 
+  // Về trang 1 khi đổi bộ lọc / khoảng ngày
+  useEffect(() => { setPage(1); }, [rows, vf.active, issueOnly, overOnly, vf.key]);
+  const pageRows = list.slice((page - 1) * PAGE, page * PAGE);
   const totalKm = list.reduce((s, t) => s + (t.km_driven ?? 0), 0);
   const totalMoney = list.reduce((s, t) => s + (fillOf.get(t.id)?.money ?? 0), 0);
 
@@ -100,9 +106,9 @@ export default function Trips({ lk }: { lk: Lookups }) {
 
       <div className="scroll">
         <table>
-          <thead><tr><th>Thời gian</th><th>Xe</th><th>Tài xế</th><th>ODO</th><th>Quãng đường</th><th>Tiêu hao</th><th>Tình trạng</th><th></th></tr></thead>
+          <thead><tr><th>Thời gian</th><th>Xe</th><th>Tài xế</th><th className="num">ODO</th><th className="num">Quãng đường</th><th className="num">Tiêu hao</th><th>Tình trạng</th><th></th></tr></thead>
           <tbody>
-            {list.map(t => {
+            {pageRows.map(t => {
               const v = lk.vehicle(t.vehicle_id);
               const unit = v?.energy_type === 'electric' ? 'kWh' : 'L';
               const high = isOver(t);
@@ -111,9 +117,9 @@ export default function Trips({ lk }: { lk: Lookups }) {
                   <tr>
                     <td>{fmt(t.start_time)}{t.end_time ? ` → ${fmt(t.end_time)}` : ''}</td>
                     <td>{lk.plate(t.vehicle_id)}<br /><small className="muted">{v?.type}</small></td><td>{lk.person(t.driver_id)}</td>
-                    <td>{t.start_odo.toLocaleString()} → {t.end_odo?.toLocaleString() ?? '…'}</td>
-                    <td>{t.status === 'on_duty' ? <><span className="chip on_duty">Đang chạy</span>{Date.now() - Date.parse(t.start_time) > 12 * 3600_000 && <><br /><small className="error">⏰ Quá 12 giờ chưa trả xe</small></>}</> : `${t.km_driven?.toLocaleString()} km`}</td>
-                    <td className={high ? 'error' : ''}>{t.energy_rate != null ? `${t.energy_rate} ${unit}/100km${high ? ' ⚠️' : ''}` : '—'}</td>
+                    <td className="num">{t.start_odo.toLocaleString('vi-VN')} → {t.end_odo?.toLocaleString('vi-VN') ?? '—'}</td>
+                    <td className="num">{t.status === 'on_duty' ? <><span className="chip on_duty">Đang chạy</span>{Date.now() - Date.parse(t.start_time) > 12 * 3600_000 && <><br /><small className="error">⏰ Quá 12 giờ chưa trả xe</small></>}</> : `${t.km_driven?.toLocaleString('vi-VN') ?? '—'} km`}</td>
+                    <td className={`num${high ? ' error' : ''}`}>{t.energy_rate != null ? `${t.energy_rate} ${unit}/100km${high ? ' ⚠️' : ''}` : '—'}</td>
                     <td>{t.closed_by && <><span className="chip">Quản lý đóng ca</span><br /></>}{t.has_damage ? <span className="chip maintenance">Có sự cố</span> : t.status === 'completed' ? '✓ Nguyên vẹn' : '—'}</td>
                     <td><button className="btn ghost" onClick={() => setOpen(open === t.id ? '' : t.id)}>{open === t.id ? 'Đóng' : 'Chi tiết'}</button></td>
                   </tr>
@@ -129,10 +135,12 @@ export default function Trips({ lk }: { lk: Lookups }) {
                 </Fragment>
               );
             })}
-            {!loading && list.length === 0 && <tr><td colSpan={8} className="muted">Không có ca nào khớp bộ lọc</td></tr>}
           </tbody>
         </table>
+        {loading && <Skeleton rows={3} />}
+        {!loading && list.length === 0 && <Empty>Không có ca nào khớp bộ lọc. Hãy đổi khoảng ngày hoặc bộ lọc, hoặc bấm ↺ Đặt lại bộ lọc.</Empty>}
       </div>
+      <Pager page={page} size={PAGE} total={list.length} onPage={setPage} unit="ca" />
     </div>
   );
 }

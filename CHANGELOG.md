@@ -2,6 +2,22 @@
 
 _File này được tạo tự động từ `src/changelog.json` (chạy `npm run changelog`). Cùng nội dung hiển thị trong app: trang Quản lý → tab 📝 Cập nhật._
 
+## 29/10/2026 (Thứ năm)
+
+### ✨ Tính năng mới
+
+- **Giao diện sáng / tối** _(Cả hai)_ — Toàn bộ màu chuyển sang biến CSS; có bộ màu tối và nút 🌓 Tự động / ☀️ Sáng / 🌙 Tối trên thanh trên cùng (Tự động = theo cài đặt máy). Lựa chọn được nhớ trên trình duyệt.
+- **Đội xe: khối Điểm sáng / Điểm cần lưu ý** _(Quản lý)_ — Tự sinh từ dữ liệu: xe sẵn sàng, ca quá 12 giờ chưa trả xe (kèm biển số), phiếu chờ duyệt, tai nạn mới, xe đang bảo dưỡng/sửa chữa. Thẻ 'Bảo dưỡng / sửa chữa' viền cam khi có xe.
+
+### 🔧 Chỉnh sửa
+
+- **Bảng và bộ lọc theo bộ quy tắc UI/UX** _(Quản lý)_ — Nhật ký ca: phân trang 50 ca/trang (Trước/Sau, Trang x/y · tổng), cột số căn phải + số kiểu Việt, dòng xen kẽ nền nhẹ, ô trống hiện —. Bộ lọc có dòng 'Đang xem: …' và nút ↺ Đặt lại bộ lọc. Tab quản lý nằm trên đường dẫn (#fuel…) nên tải lại trang vẫn đúng tab; thanh tab dính khi cuộn.
+- **Trạng thái chờ / rỗng rõ ràng** _(Quản lý)_ — Khung xương (skeleton) thay màn hình trống khi đang tải; trạng thái rỗng nói rõ vì sao và gợi ý bước tiếp theo; tôn trọng cài đặt giảm chuyển động; nút tối thiểu cao 40px; viền focus rõ khi dùng bàn phím.
+
+### ⚙️ Hệ thống
+
+- **Hiện số phiên bản ở chân trang** _(Cả hai)_ — Chân trang ghi 'FleetOps v0.2.0 · cập nhật dd/mm/yyyy' (lấy từ package.json và nhật ký cập nhật) để biết bản đang chạy.
+
 ## 27/10/2026 (Thứ ba)
 
 ### ✨ Tính năng mới

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Lookups } from '../../lib/useLookups';
 import { useVehicleFilter } from '../../components/VehicleFilter';
+import { Empty, Skeleton } from '../../components/ui';
 import SignedPhotos from '../../components/SignedPhotos';
 import { refuelSlots } from '../../lib/types';
 import { downloadPhotoZips, safeName, type ZipItem } from '../../lib/photoZip';
@@ -25,6 +26,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const [tripVehicle, setTripVehicle] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
   const [exFrom, setExFrom] = useState(ymd(new Date(Date.now() - 29 * 86400_000)));
   const [exTo, setExTo] = useState(ymd(new Date()));
   const [exporting, setExporting] = useState(false);
@@ -90,7 +92,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const load = useCallback(async () => {
     const { data: r } = await supabase.from('refuels').select('*').order('created_at', { ascending: false }).limit(200);
     const list = (r as Row[]) ?? [];
-    setRows(list);
+    setRows(list); setLoaded(true);
     // Chỉ tra cứu đúng các ca có phiếu (chia nhóm 100 để URL không quá dài)
     const ids = [...new Set(list.map(x => x.trip_id))];
     const map: Record<string, string> = {};
@@ -161,6 +163,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
       {aiMsg && <p className="muted" style={{ margin: 0 }}>{aiMsg}</p>}
       <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} phiếu</p>
       {error && <p className="error">{error}</p>}
+      {!loaded && <Skeleton />}
       {list.map(r => {
         const v = lk.vehicle(tripVehicle[r.trip_id]);
         const unit = r.energy_type === 'electric' ? 'kWh' : 'L';
@@ -193,7 +196,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
           </div>
         );
       })}
-      {list.length === 0 && <p className="muted">Không có phiếu nào</p>}
+      {loaded && list.length === 0 && <Empty>Không có phiếu nào khớp bộ lọc. Hãy đổi bộ lọc (ví dụ thêm trạng thái Đã duyệt) hoặc bấm ↺ Đặt lại bộ lọc.</Empty>}
     </div>
   );
 }
