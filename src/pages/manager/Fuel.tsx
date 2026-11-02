@@ -37,6 +37,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const [zipMsg, setZipMsg] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState('');
+  const [aiRedo, setAiRedo] = useState(false);
 
   // Tải ảnh hóa đơn / lịch sử sạc (hoặc cả 3 ảnh) của các lượt sạc điện trong khoảng ngày về máy dạng ZIP, kèm danh mục
   async function downloadPhotos() {
@@ -79,7 +80,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
     let ok = 0, unreadable = 0, total = 0, prevRemaining: number | null = null;
     try {
       for (let i = 0; i < 300; i++) {
-        const r = await aiApi<{ total: number; processed: number; ok: number; unreadable: number; error: number; remaining: number; saveError?: string | null }>({ from: exFrom, to: exTo });
+        const r = await aiApi<{ total: number; processed: number; ok: number; unreadable: number; error: number; remaining: number; saveError?: string | null }>({ from: exFrom, to: exTo, force: i === 0 && aiRedo });
         if (r.saveError) throw new Error(`Không lưu được kết quả AI vào cơ sở dữ liệu: ${r.saveError}. Nếu báo thiếu bảng/cột, hãy chạy lại SQL migration 015 và 016 rồi thử lại.`);
         ok += r.ok; unreadable += r.unreadable; total = r.total;
         if (prevRemaining !== null && r.remaining >= prevRemaining) throw new Error(`Số phiếu còn lại không giảm (${r.remaining}). Đã dừng để tránh gọi AI lặp lại. Kiểm tra bảng refuel_ai.`);
@@ -110,7 +111,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
     const elIds = list.filter(x => x.energy_type === 'electric').map(x => x.id);
     const am: Record<string, AiRow> = {};
     for (let i = 0; i < elIds.length; i += 100) {
-      const { data: a } = await supabase.from('refuel_ai').select('refuel_id, status, station, amount, kwh, charged_ts, invoice_no, duration_min').in('refuel_id', elIds.slice(i, i + 100));
+      const { data: a } = await supabase.from('refuel_ai').select('refuel_id, status, station, amount, kwh, charged_ts, invoice_no, duration_min, raw').in('refuel_id', elIds.slice(i, i + 100));
       ((a as AiRow[]) ?? []).forEach(x => { am[x.refuel_id] = x; });
     }
     setAiMap(am);
@@ -173,6 +174,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
         <button className="btn ghost" disabled={zipBusy || !exFrom || !exTo || exFrom > exTo} onClick={downloadPhotos}>{zipBusy ? 'Đang tải ảnh…' : '📦 Tải ảnh (ZIP)'}</button>
         <label className="row" style={{ fontSize: 12 }}><input type="checkbox" checked={zipAll} onChange={e => setZipAll(e.target.checked)} /> cả ảnh trước/sau sạc</label>
         <button className="btn ghost" disabled={aiBusy || !exFrom || !exTo || exFrom > exTo} onClick={runAi}>{aiBusy ? 'AI đang đọc…' : '🤖 AI đọc hóa đơn'}</button>
+        <label className="row" style={{ fontSize: 12 }}><input type="checkbox" checked={aiRedo} onChange={e => setAiRedo(e.target.checked)} /> đọc lại phiếu 'không đọc được'</label>
       </div>
       {zipMsg && <p className="muted" style={{ margin: 0 }}>{zipMsg}</p>}
       {aiMsg && <p className="muted" style={{ margin: 0 }}>{aiMsg}</p>}
@@ -202,7 +204,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
                 <small className="muted">
                   🤖 {aiMap[r.id].status === 'ok'
                     ? <>Hóa đơn: <b>{aiMap[r.id].station}</b>{aiMap[r.id].kwh ? ` · ${aiMap[r.id].kwh} kWh` : ''}{aiMap[r.id].amount ? ` · ${money(aiMap[r.id].amount!)}` : ''}</>
-                    : aiMap[r.id].status === 'unreadable' ? <>Không đọc được hóa đơn → <b>Sạc tại kho M12</b></> : 'AI lỗi, chưa đọc được (bấm 🤖 AI đọc hóa đơn để thử lại)'}
+                    : aiMap[r.id].status === 'unreadable' ? <>Không đọc được hóa đơn → <b>Sạc tại kho M12</b>{aiMap[r.id].raw?.reason ? ` (${aiMap[r.id].raw!.reason === 'no_image' ? 'không tải được ảnh hóa đơn' : aiMap[r.id].raw!.reason})` : ''}</> : 'AI lỗi, chưa đọc được (bấm 🤖 AI đọc hóa đơn để thử lại)'}
                 </small>
                 {aiFlags(r, aiMap[r.id], dupOf[r.id] ?? 0).map(w => <small key={w} className="error">⚠️ {w}</small>)}
               </div>

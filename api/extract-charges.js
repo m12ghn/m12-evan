@@ -34,15 +34,19 @@ export default async function handler(req, res) {
     // Phiếu sạc điện trong khoảng ngày (trừ phiếu bị từ chối)
     const wanted = [];
     for (let from = 0; from < 20000; from += 1000) {
-      const { data, error } = await admin.from('refuels').select('id, photos, created_at').eq('energy_type', 'electric').neq('status', 'rejected')
+      const { data, error } = await admin.from('refuels').select('id, photos, photo_receipt, created_at').eq('energy_type', 'electric').neq('status', 'rejected')
         .gte('created_at', vnStart(b.from)).lt('created_at', vnAfter(b.to)).order('created_at').range(from, from + 999);
       if (error) throw error;
       wanted.push(...(data ?? []));
       if (!data || data.length < 1000) break;
     }
-    // Đã đọc xong (ok / unreadable) thì bỏ qua, trừ khi force; 'error' được thử lại
+    // force (chỉ gửi ở lần gọi đầu): xóa kết quả 'không đọc được' / lỗi trong khoảng ngày để đọc lại; kết quả 'đọc được' vẫn giữ
+    if (b.force) {
+      for (let i = 0; i < wanted.length; i += 100) await admin.from('refuel_ai').delete().in('refuel_id', wanted.slice(i, i + 100).map(x => x.id)).in('status', ['unreadable', 'error']);
+    }
+    // Đã đọc xong (ok / unreadable) thì bỏ qua; 'error' được thử lại
     const doneIds = new Set();
-    if (!b.force) {
+    {
       for (let i = 0; i < wanted.length; i += 100) {
         const { data } = await admin.from('refuel_ai').select('refuel_id').in('refuel_id', wanted.slice(i, i + 100).map(x => x.id)).in('status', ['ok', 'unreadable']);
         (data ?? []).forEach(x => doneIds.add(x.refuel_id));
@@ -56,7 +60,7 @@ export default async function handler(req, res) {
     await Promise.all(now.map(async r => {
       let rec;
       try {
-        const paths = [r.photos?.receipt, r.photos?.after].filter(Boolean);
+        const paths = [r.photos?.receipt ?? r.photo_receipt, r.photos?.after].filter(Boolean);   // phiếu cũ chỉ có photo_receipt
         const images = [];
         for (const p of paths) {
           const { data: blob } = await admin.storage.from('photos').download(p);
@@ -64,7 +68,7 @@ export default async function handler(req, res) {
         }
         // Không có ảnh hóa đơn nào tải được → coi như không đọc được
         rec = images.length ? toRecord(await (gemini ? readReceiptGemini({ apiKey, model, images }) : readReceipt({ apiKey, model, images, base: process.env.ANTHROPIC_API_BASE || undefined })), model)
-          : toRecord({ readable: false }, model);
+          : toRecord({ readable: false, reason: 'no_image' }, model);   // không tải được ảnh hóa đơn nào
       } catch (e) {
         rec = { status: 'error', station: null, amount: null, kwh: null, charged_at: null, charged_ts: null, duration_min: null, invoice_no: null, raw: null, model, error: String(e.message).slice(0, 250) };
       }

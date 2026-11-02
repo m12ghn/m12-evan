@@ -1,7 +1,7 @@
 // Đối chiếu kết quả AI đọc hóa đơn với phiếu sạc do tài xế nhập → danh sách cảnh báo ngắn cho quản lý.
 export interface AiInfo {
   refuel_id: string; status: 'ok' | 'unreadable' | 'error'; station: string | null; amount: number | null; kwh: number | null;
-  charged_ts: string | null; invoice_no: string | null; duration_min: number | null;
+  charged_ts: string | null; invoice_no: string | null; duration_min: number | null; raw?: { reason?: string } | null;
 }
 export interface RefuelLite { id: string; created_at: string; total_amount: number; quantity: number; energy_type: string }
 

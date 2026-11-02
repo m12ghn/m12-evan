@@ -14,6 +14,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🐞 Sửa lỗi
 
+- **AI đọc hóa đơn: đọc được ảnh của phiếu cũ, nói rõ lý do không đọc được, cho đọc lại** _(Quản lý)_ — Phiếu cũ lưu ảnh ở cột photo_receipt nay cũng được đọc. Phiếu 'không đọc được' hiện lý do (vd 'Ảnh taplo xe…', 'không tải được ảnh hóa đơn'). Thêm ô 'đọc lại phiếu không đọc được' để chạy lại sau khi sửa.
 - **AI đọc hóa đơn: sửa lỗi đọc lặp cùng một lô (đã đọc 352/292)** _(Quản lý)_ — Trước đây nếu không lưu được kết quả vào DB thì lỗi bị bỏ qua và cùng một lô phiếu bị đọc đi đọc lại (tốn phí API). Nay báo rõ lỗi lưu, và tự dừng khi số phiếu còn lại không giảm.
 
 ### ⚙️ Hệ thống
