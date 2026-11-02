@@ -15,6 +15,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🐞 Sửa lỗi
 
+- **Duyệt nhiên liệu/điện: tìm được phiếu cũ (lọc theo khoảng ngày, phân trang)** _(Quản lý)_ — Danh sách trước đây chỉ lấy 200 phiếu mới nhất nên các phiếu cũ (có trong file Excel) không thấy trong app. Nay danh sách theo khoảng ngày đang chọn (cùng khoảng ngày với nút xuất file/AI), phân trang 30 phiếu/trang; nhớ bộ lọc Trạng thái mặc định là Chờ duyệt.
 - **AI đọc hóa đơn: sửa lỗi 504 (quá thời gian của máy chủ)** _(Quản lý)_ — Mỗi lượt gọi chỉ làm trong ngân sách ~28 giây (3 luồng song song, tối đa 12 phiếu), mỗi lần gọi AI tối đa 25 giây; Gemini Flash tắt chế độ 'suy nghĩ' cho nhanh. Giao diện tự thử lại khi gặp 502/503/504 hoặc mất mạng; phiếu lỗi tạm không bị ghi là 'không đọc được' mà được đọc lại ở lượt sau.
 - **AI đọc hóa đơn: đọc được ảnh của phiếu cũ, nói rõ lý do không đọc được, cho đọc lại** _(Quản lý)_ — Phiếu cũ lưu ảnh ở cột photo_receipt nay cũng được đọc. Phiếu 'không đọc được' hiện lý do (vd 'Ảnh taplo xe…', 'không tải được ảnh hóa đơn'). Thêm ô 'đọc lại phiếu không đọc được' để chạy lại sau khi sửa.
 - **AI đọc hóa đơn: sửa lỗi đọc lặp cùng một lô (đã đọc 352/292)** _(Quản lý)_ — Trước đây nếu không lưu được kết quả vào DB thì lỗi bị bỏ qua và cùng một lô phiếu bị đọc đi đọc lại (tốn phí API). Nay báo rõ lỗi lưu, và tự dừng khi số phiếu còn lại không giảm.

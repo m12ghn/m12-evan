@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Lookups } from '../../lib/useLookups';
 import { useVehicleFilter } from '../../components/VehicleFilter';
-import { Empty, Skeleton } from '../../components/ui';
+import { Empty, Pager, Skeleton } from '../../components/ui';
 import SignedPhotos from '../../components/SignedPhotos';
 import { refuelSlots } from '../../lib/types';
 import { downloadPhotoZips, safeName, type ZipItem } from '../../lib/photoZip';
@@ -38,6 +38,8 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState('');
   const [aiRedo, setAiRedo] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE = 30;
 
   // Tải ảnh hóa đơn / lịch sử sạc (hoặc cả 3 ảnh) của các lượt sạc điện trong khoảng ngày về máy dạng ZIP, kèm danh mục
   async function downloadPhotos() {
@@ -98,8 +100,10 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   const vf = useVehicleFilter(lk, { statuses: (Object.keys(STATUS) as (keyof typeof STATUS)[]).map(k => ({ value: k, label: STATUS[k] })), defaultStatuses: ['pending'] });
 
   const load = useCallback(async () => {
-    const { data: r } = await supabase.from('refuels').select('*').order('created_at', { ascending: false }).limit(200);
-    const list = (r as Row[]) ?? [];
+    // Danh sách theo khoảng ngày đang chọn (trước đây chỉ lấy 200 phiếu mới nhất nên phiếu cũ không tìm thấy)
+    setLoaded(false);
+    const list = await fetchAll<Row>((a, b) => supabase.from('refuels').select('*')
+      .gte('created_at', dayStart(exFrom)).lt('created_at', dayAfter(exTo)).order('created_at', { ascending: false }).range(a, b));
     setRows(list); setLoaded(true);
     // Chỉ tra cứu đúng các ca có phiếu (chia nhóm 100 để URL không quá dài)
     const ids = [...new Set(list.map(x => x.trip_id))];
@@ -117,8 +121,8 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
       ((a as AiRow[]) ?? []).forEach(x => { am[x.refuel_id] = x; });
     }
     setAiMap(am);
-  }, []);
-  useEffect(() => { load(); }, [load]);
+  }, [exFrom, exTo]);
+  useEffect(() => { if (exFrom && exTo && exFrom <= exTo) load(); }, [load, exFrom, exTo]);
 
   async function decide(id: string, status: 'approved' | 'rejected') {
     setError('');
@@ -175,12 +179,14 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   }
 
   const list = rows.filter(r => vf.match(tripVehicle[r.trip_id], r.driver_id, r.status));
+  const pageList = list.slice((page - 1) * PAGE, page * PAGE);
+  useEffect(() => { setPage(1); }, [rows, vf.key]);
   const dupOf = duplicateCounts(rows.map(x => ({ id: x.id, ai: aiMap[x.id] })));
   return (
     <div className="stack">
       {vf.ui}
       <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <label className="stack" style={{ fontSize: 12 }}>Xuất sạc điện từ<input type="date" value={exFrom} max={exTo} onChange={e => setExFrom(e.target.value)} /></label>
+        <label className="stack" style={{ fontSize: 12 }}>Từ ngày (danh sách &amp; xuất file)<input type="date" value={exFrom} max={exTo} onChange={e => setExFrom(e.target.value)} /></label>
         <label className="stack" style={{ fontSize: 12 }}>đến<input type="date" value={exTo} min={exFrom} onChange={e => setExTo(e.target.value)} /></label>
         <button className="btn" disabled={exporting || !exFrom || !exTo || exFrom > exTo} onClick={() => exportCharges('xlsx')}>{exporting ? 'Đang xuất…' : '⬇️ Excel lượt sạc điện'}</button>
         <button className="btn ghost" disabled={exporting || !exFrom || !exTo || exFrom > exTo} onClick={() => exportCharges('csv')}>⬇️ CSV</button>
@@ -191,10 +197,10 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
       </div>
       {zipMsg && <p className="muted" style={{ margin: 0 }}>{zipMsg}</p>}
       {aiMsg && <p className="muted" style={{ margin: 0 }}>{aiMsg}</p>}
-      <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} phiếu</p>
+      <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} phiếu trong khoảng ngày đã chọn</p>
       {error && <p className="error">{error}</p>}
       {!loaded && <Skeleton />}
-      {list.map(r => {
+      {pageList.map(r => {
         const v = lk.vehicle(tripVehicle[r.trip_id]);
         const unit = r.energy_type === 'electric' ? 'kWh' : 'L';
         const over = v != null && r.quantity > v.capacity;
@@ -236,6 +242,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
           </div>
         );
       })}
+      <Pager page={page} size={PAGE} total={list.length} onPage={setPage} unit="phiếu" />
       {loaded && list.length === 0 && <Empty>Không có phiếu nào khớp bộ lọc. Hãy đổi bộ lọc (ví dụ thêm trạng thái Đã duyệt) hoặc bấm ↺ Đặt lại bộ lọc.</Empty>}
     </div>
   );
