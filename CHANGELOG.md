@@ -2,6 +2,20 @@
 
 _File này được tạo tự động từ `src/changelog.json` (chạy `npm run changelog`). Cùng nội dung hiển thị trong app: trang Quản lý → tab 📝 Cập nhật._
 
+## 02/11/2026 (Thứ hai)
+
+### ✨ Tính năng mới
+
+- **Duyệt nhiên liệu/điện: kết quả AI và cảnh báo ngay trên từng phiếu sạc điện** _(Quản lý)_ — Mỗi phiếu hiện dòng 🤖 trạm / kWh / tiền theo hóa đơn và cảnh báo: tiền nhập khác hóa đơn, nhập thiếu 000, kWh lệch, ảnh có vẻ cũ (giờ trên ảnh cách lúc gửi phiếu > 36 giờ), trùng phiên sạc với phiếu khác. File Excel/CSV có thêm cột Thời lượng, Mã phiên, Cảnh báo.
+
+### 🔧 Chỉnh sửa
+
+- **AI đọc hóa đơn: chỉnh theo ảnh thực tế (app Esky, màn hình trụ sạc, taplo)** _(Quản lý)_ — Prompt nhận diện đúng các loại ảnh tài xế hay gửi; ảnh taplo/ảnh xe/tủ điện không có số liệu thì mặc định 'Sạc tại kho M12'. Đọc thêm ngày giờ sạc, thời lượng, mã phiên; thống nhất tên trạm Esky viết lệch dấu về một tên chuẩn.
+
+### ⚙️ Hệ thống
+
+- **Cơ sở dữ liệu: migration 016 (refuel_ai thêm charged_ts, duration_min)** _(Cả hai)_ — Lưu ngày giờ sạc và thời lượng đọc từ ảnh để phát hiện ảnh cũ / trùng.
+
 ## 29/10/2026 (Thứ năm)
 
 ### ✨ Tính năng mới

@@ -1,5 +1,28 @@
 [
   {
+    "date": "2026-11-02",
+    "items": [
+      {
+        "type": "change",
+        "scope": "manager",
+        "title": "AI đọc hóa đơn: chỉnh theo ảnh thực tế (app Esky, màn hình trụ sạc, taplo)",
+        "detail": "Prompt nhận diện đúng các loại ảnh tài xế hay gửi; ảnh taplo/ảnh xe/tủ điện không có số liệu thì mặc định 'Sạc tại kho M12'. Đọc thêm ngày giờ sạc, thời lượng, mã phiên; thống nhất tên trạm Esky viết lệch dấu về một tên chuẩn."
+      },
+      {
+        "type": "new",
+        "scope": "manager",
+        "title": "Duyệt nhiên liệu/điện: kết quả AI và cảnh báo ngay trên từng phiếu sạc điện",
+        "detail": "Mỗi phiếu hiện dòng 🤖 trạm / kWh / tiền theo hóa đơn và cảnh báo: tiền nhập khác hóa đơn, nhập thiếu 000, kWh lệch, ảnh có vẻ cũ (giờ trên ảnh cách lúc gửi phiếu > 36 giờ), trùng phiên sạc với phiếu khác. File Excel/CSV có thêm cột Thời lượng, Mã phiên, Cảnh báo."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 016 (refuel_ai thêm charged_ts, duration_min)",
+        "detail": "Lưu ngày giờ sạc và thời lượng đọc từ ảnh để phát hiện ảnh cũ / trùng."
+      }
+    ]
+  },
+  {
     "date": "2026-10-29",
     "items": [
       {

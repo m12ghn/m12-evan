@@ -556,6 +556,8 @@ create table if not exists public.refuel_ai (
   kwh numeric,             -- điện năng trên hóa đơn
   charged_at text,         -- ngày giờ ghi trên hóa đơn (nguyên văn)
   invoice_no text,
+  charged_ts timestamptz,  -- ngày giờ bắt đầu sạc đọc từ ảnh (phát hiện ảnh cũ)
+  duration_min int,        -- thời lượng sạc (phút)
   raw jsonb,
   model text,
   error text,

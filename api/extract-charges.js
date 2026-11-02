@@ -65,7 +65,7 @@ export default async function handler(req, res) {
         rec = images.length ? toRecord(await (gemini ? readReceiptGemini({ apiKey, model, images }) : readReceipt({ apiKey, model, images, base: process.env.ANTHROPIC_API_BASE || undefined })), model)
           : toRecord({ readable: false }, model);
       } catch (e) {
-        rec = { status: 'error', station: null, amount: null, kwh: null, charged_at: null, invoice_no: null, raw: null, model, error: String(e.message).slice(0, 250) };
+        rec = { status: 'error', station: null, amount: null, kwh: null, charged_at: null, charged_ts: null, duration_min: null, invoice_no: null, raw: null, model, error: String(e.message).slice(0, 250) };
       }
       stat[rec.status]++;
       await admin.from('refuel_ai').upsert({ refuel_id: r.id, ...rec, created_at: new Date().toISOString() });

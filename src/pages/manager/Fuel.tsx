@@ -7,6 +7,7 @@ import SignedPhotos from '../../components/SignedPhotos';
 import { refuelSlots } from '../../lib/types';
 import { downloadPhotoZips, safeName, type ZipItem } from '../../lib/photoZip';
 import { aiApi } from '../../lib/aiApi';
+import { aiFlags, duplicateCounts, type AiInfo } from '../../lib/aiFlags';
 import { downloadCsv, downloadXlsx, type Cell } from '../../lib/excel';
 import { dayAfter, dayStart, fetchAll, ymd } from '../../lib/dates';
 
@@ -17,13 +18,14 @@ interface Row {
   battery_before: number | null; battery_after: number | null; charge_minutes: number | null;
   status: 'pending' | 'approved' | 'rejected'; manager_note: string | null;
 }
-interface AiRow { refuel_id: string; status: 'ok' | 'unreadable' | 'error'; station: string | null; amount: number | null; kwh: number | null }
+type AiRow = AiInfo;
 const money = (n: number) => Math.round(n).toLocaleString('vi-VN') + ' đ';
 const STATUS = { pending: '⏳ Chờ duyệt', approved: '✓ Đã duyệt', rejected: '❌ Từ chối' } as const;
 
 export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => void }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [tripVehicle, setTripVehicle] = useState<Record<string, string>>({});
+  const [aiMap, setAiMap] = useState<Record<string, AiRow>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -101,6 +103,14 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
       (t ?? []).forEach(x => { map[x.id] = x.vehicle_id; });
     }
     setTripVehicle(map);
+    // Kết quả AI đọc hóa đơn của các phiếu điện đang hiển thị (nếu đã chạy)
+    const elIds = list.filter(x => x.energy_type === 'electric').map(x => x.id);
+    const am: Record<string, AiRow> = {};
+    for (let i = 0; i < elIds.length; i += 100) {
+      const { data: a } = await supabase.from('refuel_ai').select('refuel_id, status, station, amount, kwh, charged_ts, invoice_no, duration_min').in('refuel_id', elIds.slice(i, i + 100));
+      ((a as AiRow[]) ?? []).forEach(x => { am[x.refuel_id] = x; });
+    }
+    setAiMap(am);
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -129,24 +139,26 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
       // Kết quả AI đọc hóa đơn (nếu đã chạy): trạm sạc + đối chiếu số tiền / kWh trên hóa đơn
       const ai: Record<string, AiRow> = {};
       for (let i = 0; i < data.length; i += 100) {
-        const { data: a } = await supabase.from('refuel_ai').select('refuel_id, status, station, amount, kwh').in('refuel_id', data.slice(i, i + 100).map(x => x.id));
+        const { data: a } = await supabase.from('refuel_ai').select('refuel_id, status, station, amount, kwh, charged_ts, invoice_no, duration_min').in('refuel_id', data.slice(i, i + 100).map(x => x.id));
         ((a as AiRow[]) ?? []).forEach(x => { ai[x.refuel_id] = x; });
       }
       const note = (a?: AiRow) => !a ? 'Chưa đọc hóa đơn' : a.status === 'ok' ? 'Đọc từ hóa đơn' : a.status === 'unreadable' ? 'Không đọc được hóa đơn → mặc định' : 'AI lỗi, cần đọc lại';
-      const out: Cell[][] = [['Ngày/giờ', 'Biển số xe', 'Tên tài xế', 'ODO hiện tại', '% pin trước khi sạc', '% pin sau khi sạc', 'Trạm sạc', 'Thành tiền (đ)', 'Thành tiền trên hóa đơn (AI)', 'kWh trên hóa đơn (AI)', 'Ghi chú AI']];
+      const out: Cell[][] = [['Ngày/giờ', 'Biển số xe', 'Tên tài xế', 'ODO hiện tại', '% pin trước khi sạc', '% pin sau khi sạc', 'Trạm sạc', 'Thành tiền (đ)', 'Thành tiền trên hóa đơn (AI)', 'kWh trên hóa đơn (AI)', 'Thời lượng sạc (phút)', 'Mã phiên', 'Ghi chú AI', 'Cảnh báo']];
+      const dups = duplicateCounts(data.map(x => ({ id: x.id, ai: ai[x.id] })));
       data.forEach(r => { const a = ai[r.id]; out.push([
         new Date(r.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }), lk.plate(tv[r.trip_id]), lk.person(r.driver_id),
-        r.odo_at_refuel, r.battery_before, r.battery_after, a?.station ?? r.station ?? '', Math.round(r.total_amount), a?.amount ?? null, a?.kwh ?? null, note(a),
+        r.odo_at_refuel, r.battery_before, r.battery_after, a?.station ?? r.station ?? '', Math.round(r.total_amount), a?.amount ?? null, a?.kwh ?? null, a?.duration_min ?? null, a?.invoice_no ?? '', note(a), aiFlags(r, a, dups[r.id] ?? 0).join('; '),
       ]); });
       if (!data.length) { setError('Không có lượt sạc điện nào trong khoảng ngày và bộ lọc đã chọn'); return; }
       const name = `luot-sac-dien_${exFrom}_${exTo}`;
       if (kind === 'csv') downloadCsv(`${name}.csv`, out);
-      else await downloadXlsx(`${name}.xlsx`, [{ name: 'Lượt sạc điện', rows: out, widths: [18, 13, 22, 13, 18, 18, 30, 14, 20, 18, 30] }]);
+      else await downloadXlsx(`${name}.xlsx`, [{ name: 'Lượt sạc điện', rows: out, widths: [18, 13, 22, 13, 18, 18, 30, 14, 20, 18, 14, 18, 30, 60] }]);
     } catch (e) { setError((e as Error).message); }
     setExporting(false);
   }
 
   const list = rows.filter(r => vf.match(tripVehicle[r.trip_id], r.driver_id, r.status));
+  const dupOf = duplicateCounts(rows.map(x => ({ id: x.id, ai: aiMap[x.id] })));
   return (
     <div className="stack">
       {vf.ui}
@@ -182,6 +194,16 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
               )}
               {over && <span className="error"> ⚠️ Vượt dung tích bình/pin ({v!.capacity} {unit})</span>}
             </p>
+            {r.energy_type === 'electric' && aiMap[r.id] && (
+              <div className="stack" style={{ gap: 4 }}>
+                <small className="muted">
+                  🤖 {aiMap[r.id].status === 'ok'
+                    ? <>Hóa đơn: <b>{aiMap[r.id].station}</b>{aiMap[r.id].kwh ? ` · ${aiMap[r.id].kwh} kWh` : ''}{aiMap[r.id].amount ? ` · ${money(aiMap[r.id].amount!)}` : ''}</>
+                    : aiMap[r.id].status === 'unreadable' ? <>Không đọc được hóa đơn → <b>Sạc tại kho M12</b></> : 'AI lỗi, chưa đọc được (bấm 🤖 AI đọc hóa đơn để thử lại)'}
+                </small>
+                {aiFlags(r, aiMap[r.id], dupOf[r.id] ?? 0).map(w => <small key={w} className="error">⚠️ {w}</small>)}
+              </div>
+            )}
             <p className="muted">{new Date(r.created_at).toLocaleString('vi-VN')} · ODO {r.odo_at_refuel.toLocaleString()} km · {r.station || 'Chưa ghi trạm'} · {r.fuel_type}</p>
             <SignedPhotos
               photos={r.photos ?? { pump: r.photo_pump ?? '', receipt: r.photo_receipt ?? '' }}
