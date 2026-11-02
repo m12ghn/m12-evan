@@ -6,10 +6,12 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### ✨ Tính năng mới
 
+- **Cấp điện: bắt buộc chọn Nơi sạc (Sạc tại kho M12 / Sạc ngoài)** _(Tài xế)_ — Sạc tại M12: nhập % pin trước/sau + thời gian sạc, hệ thống tự tính kWh = (% sau − % trước) × 16,7 / 100, không nhập thành tiền; ảnh trụ sạc/hóa đơn không bắt buộc. Sạc ngoài: nhập kWh + thành tiền và bắt buộc đủ 3 ảnh (có hóa đơn / lịch sử sạc) để AI đọc.
 - **Duyệt nhiên liệu/điện: kết quả AI và cảnh báo ngay trên từng phiếu sạc điện** _(Quản lý)_ — Mỗi phiếu hiện dòng 🤖 trạm / kWh / tiền theo hóa đơn và cảnh báo: tiền nhập khác hóa đơn, nhập thiếu 000, kWh lệch, ảnh có vẻ cũ (giờ trên ảnh cách lúc gửi phiếu > 36 giờ), trùng phiên sạc với phiếu khác. File Excel/CSV có thêm cột Thời lượng, Mã phiên, Cảnh báo.
 
 ### 🔧 Chỉnh sửa
 
+- **Duyệt điện / Excel / AI theo Nơi sạc** _(Quản lý)_ — Thẻ phiếu hiện nhãn nơi sạc; phiếu M12 hiện kWh tính theo % pin và không chạy AI; chỉ phiếu Sạc ngoài (và phiếu cũ chưa có nơi sạc) được AI đọc hóa đơn. Excel: trạm = Sạc tại kho M12 và kWh chốt theo % pin cho phiếu M12.
 - **Excel lượt sạc điện: kWh theo % pin cho trạm M12, giờ bắt đầu / kết thúc sạc** _(Quản lý)_ — Sạc tại kho M12 tính kWh = (% pin sau − % pin trước) × 16,7 kWh / 100%. Thêm cột Bắt đầu sạc, Kết thúc sạc (lấy từ ảnh nếu AI đọc được; không thì ước tính từ giờ gửi phiếu và thời gian sạc), Nguồn giờ sạc, kWh đã sạc (chốt) và Nguồn kWh. Cảnh báo khi kWh tài xế nhập lệch >15% so với tính theo % pin.
 - **AI đọc hóa đơn: chỉnh theo ảnh thực tế (app Esky, màn hình trụ sạc, taplo)** _(Quản lý)_ — Prompt nhận diện đúng các loại ảnh tài xế hay gửi; ảnh taplo/ảnh xe/tủ điện không có số liệu thì mặc định 'Sạc tại kho M12'. Đọc thêm ngày giờ sạc, thời lượng, mã phiên; thống nhất tên trạm Esky viết lệch dấu về một tên chuẩn.
 
@@ -22,6 +24,7 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### ⚙️ Hệ thống
 
+- **Cơ sở dữ liệu: migration 017 (refuels.charge_place)** _(Cả hai)_ — Cột charge_place: 'm12' hoặc 'external'; phiếu cũ để trống.
 - **Cơ sở dữ liệu: migration 016 (refuel_ai thêm charged_ts, duration_min)** _(Cả hai)_ — Lưu ngày giờ sạc và thời lượng đọc từ ảnh để phát hiện ảnh cũ / trùng.
 
 ## 29/10/2026 (Thứ năm)

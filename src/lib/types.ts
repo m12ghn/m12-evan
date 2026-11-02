@@ -51,6 +51,7 @@ export interface Refuel {
   battery_before: number | null;
   battery_after: number | null;
   charge_minutes: number | null;
+  charge_place?: 'm12' | 'external' | null;
   status: 'pending' | 'approved' | 'rejected';
 }
 

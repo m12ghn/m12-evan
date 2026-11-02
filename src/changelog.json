@@ -3,6 +3,24 @@
     "date": "2026-11-02",
     "items": [
       {
+        "type": "new",
+        "scope": "driver",
+        "title": "Cấp điện: bắt buộc chọn Nơi sạc (Sạc tại kho M12 / Sạc ngoài)",
+        "detail": "Sạc tại M12: nhập % pin trước/sau + thời gian sạc, hệ thống tự tính kWh = (% sau − % trước) × 16,7 / 100, không nhập thành tiền; ảnh trụ sạc/hóa đơn không bắt buộc. Sạc ngoài: nhập kWh + thành tiền và bắt buộc đủ 3 ảnh (có hóa đơn / lịch sử sạc) để AI đọc."
+      },
+      {
+        "type": "change",
+        "scope": "manager",
+        "title": "Duyệt điện / Excel / AI theo Nơi sạc",
+        "detail": "Thẻ phiếu hiện nhãn nơi sạc; phiếu M12 hiện kWh tính theo % pin và không chạy AI; chỉ phiếu Sạc ngoài (và phiếu cũ chưa có nơi sạc) được AI đọc hóa đơn. Excel: trạm = Sạc tại kho M12 và kWh chốt theo % pin cho phiếu M12."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 017 (refuels.charge_place)",
+        "detail": "Cột charge_place: 'm12' hoặc 'external'; phiếu cũ để trống."
+      },
+      {
         "type": "fix",
         "scope": "manager",
         "title": "Duyệt nhiên liệu/điện: tìm được phiếu cũ (lọc theo khoảng ngày, phân trang)",

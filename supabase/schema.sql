@@ -140,6 +140,7 @@ create table public.refuels (
   battery_after  int check (battery_after  between 0 and 100),   -- xe điện: % pin sau khi sạc
   charge_minutes int check (charge_minutes > 0),                 -- xe điện: thời gian sạc (phút)
   station text,             -- trạm xăng / trạm sạc
+  charge_place text check (charge_place in ('m12','external')),   -- xe điện: sạc tại kho M12 hay sạc ngoài
   photo_pump text,          -- ảnh cột bơm / màn hình trạm sạc
   photo_receipt text,
   photos jsonb,             -- {before, after, pump, receipt} = đường dẫn ảnh trong Storage

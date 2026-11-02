@@ -33,10 +33,10 @@ export default async function handler(req, res) {
     // Phiếu sạc điện trong khoảng ngày (trừ phiếu bị từ chối)
     const wanted = [];
     for (let from = 0; from < 20000; from += 1000) {
-      const { data, error } = await admin.from('refuels').select('id, photos, photo_receipt, created_at').eq('energy_type', 'electric').neq('status', 'rejected')
+      const { data, error } = await admin.from('refuels').select('id, photos, photo_receipt, created_at, charge_place').eq('energy_type', 'electric').neq('status', 'rejected')
         .gte('created_at', vnStart(b.from)).lt('created_at', vnAfter(b.to)).order('created_at').range(from, from + 999);
       if (error) throw error;
-      wanted.push(...(data ?? []));
+      wanted.push(...(data ?? []).filter(x => x.charge_place !== 'm12'));   // sạc tại M12: tính kWh theo % pin, không cần AI đọc hóa đơn
       if (!data || data.length < 1000) break;
     }
     // force (chỉ gửi ở lần gọi đầu): xóa kết quả 'không đọc được' / lỗi trong khoảng ngày để đọc lại; kết quả 'đọc được' vẫn giữ

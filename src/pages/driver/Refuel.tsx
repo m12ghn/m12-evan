@@ -6,6 +6,7 @@ import { useDraft } from '../../lib/draft';
 import { notifyTelegram } from '../../lib/notify';
 import { clampPercent, cleanDecimal, fmtThousands, onlyDigits } from '../../lib/numbers';
 import PhotoInput from '../../components/PhotoInput';
+import { kwhFromPercent, M12_FULL_KWH } from '../../lib/aiFlags';
 
 const STATUS = { pending: '⏳ Chờ duyệt', approved: '✓ Đã duyệt', rejected: '❌ Từ chối' } as const;
 const money = (n: number) => Math.round(n).toLocaleString('vi-VN') + ' đ';
@@ -16,6 +17,7 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
   const slots = refuelSlots(vehicle.energy_type);
   const [list, setList] = useState<RefuelRow[]>([]);
   // dùng chung
+  const [place, setPlace] = useState<'' | 'm12' | 'external'>('');   // nơi sạc (xe điện): bắt buộc chọn
   const [odo, setOdo] = useState(String(trip.start_odo));
   const [photos, setPhotos] = useState<Record<string, Blob>>({});
   // xăng/dầu
@@ -33,7 +35,8 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
   const rid = useRef(crypto.randomUUID()); // id cố định cho mỗi lần gửi → gửi lại không bị tạo trùng phiếu
   const [error, setError] = useState('');
 
-  const draft = useDraft(`refuel:${trip.id}`, { odo, photos, qty, price, station, batBefore, batAfter, kwh, minutes, amount }, d => {
+  const draft = useDraft(`refuel:${trip.id}`, { place, odo, photos, qty, price, station, batBefore, batAfter, kwh, minutes, amount }, d => {
+    if (d.place !== undefined) setPlace(d.place);
     if (d.odo !== undefined) setOdo(d.odo);
     if (d.photos) setPhotos(d.photos);
     if (d.qty !== undefined) setQty(d.qty);
@@ -51,17 +54,22 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
   useEffect(() => { load(); }, []);
 
   const odoOk = odo !== '' && Number(odo) >= trip.start_odo;
-  const photosOk = slots.every(([k]) => photos[k]);
+  const isM12 = electric && place === 'm12';
+  const kwhM12 = isM12 ? kwhFromPercent(Number(batBefore), Number(batAfter)) : null;   // 100% = 16,7 kWh
+  // Sạc tại M12: ảnh trước/sau bắt buộc, ảnh trụ sạc/hóa đơn không bắt buộc; sạc ngoài: đủ 3 ảnh (có hóa đơn để AI đọc)
+  const required = isM12 ? slots.filter(([k]) => k !== 'receipt') : slots;
+  const photosOk = required.every(([k]) => photos[k]);
   const fuelTotal = (Number(qty) || 0) * (Number(price) || 0);
   const batOrderBad = batBefore !== '' && batAfter !== '' && Number(batAfter) < Number(batBefore);
   const valid = electric
-    ? odoOk && batBefore !== '' && batAfter !== '' && !batOrderBad && Number(kwh) > 0 && Number(minutes) > 0 && Number(amount) > 0 && photosOk
+    ? place !== '' && odoOk && batBefore !== '' && batAfter !== '' && !batOrderBad && Number(minutes) > 0 && photosOk
+      && (isM12 ? (kwhM12 ?? 0) > 0 : Number(kwh) > 0 && Number(amount) > 0)
     : odoOk && Number(qty) > 0 && photosOk;
 
   async function submit() {
     setBusy(true); setError('');
     try {
-      const paths = await uploadPhotos(userId, 'refuel', slots.map(([k]) => [k, photos[k]] as [string, Blob]), (d, t) => setProgress(`Đang tải ảnh ${d}/${t}…`));
+      const paths = await uploadPhotos(userId, 'refuel', slots.filter(([k]) => photos[k]).map(([k]) => [k, photos[k]] as [string, Blob]), (d, t) => setProgress(`Đang tải ảnh ${d}/${t}…`));
       setProgress('Đang gửi…');
       const base = {
         id: rid.current, trip_id: trip.id, driver_id: userId, energy_type: vehicle.energy_type, fuel_type: vehicle.fuel_type,
@@ -70,7 +78,9 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
       };
       const row: Record<string, unknown> = electric
         ? {
-            ...base, quantity: Number(kwh), total_amount: Number(amount), unit_price: Math.round(Number(amount) / Number(kwh)),
+            ...base, charge_place: place,
+            // Sạc tại M12: kWh tính theo % pin, không có tiền; sạc ngoài: nhập kWh + thành tiền theo hóa đơn
+            quantity: isM12 ? kwhM12 : Number(kwh), total_amount: isM12 ? 0 : Number(amount), unit_price: isM12 ? 0 : Math.round(Number(amount) / Number(kwh)),
             battery_before: Number(batBefore), battery_after: Number(batAfter), charge_minutes: Number(minutes),
           }
         : { ...base, quantity: Number(qty), unit_price: Number(price), total_amount: Math.round(fuelTotal), station: station || null };
@@ -78,7 +88,7 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
       if (e && e.code !== '23505') throw e; // 23505 = phiếu này đã được ghi từ lần gửi trước
       notifyTelegram('refuel', rid.current);
       rid.current = crypto.randomUUID();
-      setQty(''); setStation(''); setBatBefore(''); setBatAfter(''); setKwh(''); setMinutes(''); setAmount(''); setPhotos({});
+      setQty(''); setStation(''); setPlace(''); setBatBefore(''); setBatAfter(''); setKwh(''); setMinutes(''); setAmount(''); setPhotos({});
       await draft.clear();
       await load();
     } catch (e) { setError((e as Error).message); }
@@ -92,14 +102,28 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
 
       {electric ? (
         <>
+          <div className="stack">
+            <b>NƠI SẠC (bắt buộc chọn)</b>
+            <div className="row" style={{ flexWrap: 'wrap' }}>
+              <button type="button" className={`btn ${place === 'm12' ? '' : 'ghost'}`} onClick={() => setPlace('m12')}>🏭 Sạc tại kho M12</button>
+              <button type="button" className={`btn ${place === 'external' ? '' : 'ghost'}`} onClick={() => setPlace('external')}>🔌 Sạc ngoài</button>
+            </div>
+            {place === '' && <p className="muted">Chọn nơi sạc để tiếp tục.</p>}
+            {isM12 && <p className="muted">Sạc tại M12: nhập % pin trước/sau, hệ thống tự tính kWh (100% = {M12_FULL_KWH} kWh). Không cần nhập thành tiền.</p>}
+            {place === 'external' && <p className="muted">Sạc ngoài: nhập kWh, thành tiền và chụp hóa đơn / lịch sử sạc để hệ thống đọc.</p>}
+          </div>
+          {place !== '' && <>
           <label>ĐỒNG HỒ ODO (km)<input inputMode="numeric" pattern="[0-9]*" value={odo} onChange={e => setOdo(onlyDigits(e.target.value))} /></label>
           {odo !== '' && !odoOk && <p className="error">ODO không được nhỏ hơn ODO đầu ca ({trip.start_odo.toLocaleString()} km)</p>}
           <label>PIN TRƯỚC KHI SẠC (%)<input inputMode="numeric" pattern="[0-9]*" placeholder="0 – 100" value={batBefore} onChange={e => setBatBefore(clampPercent(onlyDigits(e.target.value)))} /></label>
           <label>PIN SAU KHI SẠC (%)<input inputMode="numeric" pattern="[0-9]*" placeholder="0 – 100" value={batAfter} onChange={e => setBatAfter(clampPercent(onlyDigits(e.target.value)))} /></label>
           {batOrderBad && <p className="error">Pin sau khi sạc phải lớn hơn hoặc bằng pin trước khi sạc</p>}
-          <label>KWH (ĐIỆN NĂNG) (kWh)<input inputMode="decimal" placeholder="ví dụ 12.5" value={kwh} onChange={e => setKwh(cleanDecimal(e.target.value))} /></label>
+          {isM12
+            ? <p>KWH đã sạc (tự tính): <b>{kwhM12 != null ? `${kwhM12} kWh` : '—'}</b></p>
+            : <label>KWH (ĐIỆN NĂNG) (kWh)<input inputMode="decimal" placeholder="ví dụ 12.5" value={kwh} onChange={e => setKwh(cleanDecimal(e.target.value))} /></label>}
           <label>THỜI GIAN SẠC (phút)<input inputMode="numeric" pattern="[0-9]*" value={minutes} onChange={e => setMinutes(onlyDigits(e.target.value))} /></label>
-          <label>THÀNH TIỀN (VND)<input inputMode="numeric" pattern="[0-9]*" placeholder="ví dụ 214,000" value={fmtThousands(amount)} onChange={e => setAmount(onlyDigits(e.target.value))} /></label>
+          {!isM12 && <label>THÀNH TIỀN (VND)<input inputMode="numeric" pattern="[0-9]*" placeholder="ví dụ 214,000" value={fmtThousands(amount)} onChange={e => setAmount(onlyDigits(e.target.value))} /></label>}
+          </>}
         </>
       ) : (
         <>
@@ -112,12 +136,14 @@ export default function Refuel({ userId, trip, vehicle, onBack }: { userId: stri
         </>
       )}
 
-      <p className="muted">Ảnh bắt buộc ({slots.length}): có thể chụp trực tiếp hoặc chọn ảnh có sẵn trong máy (ví dụ ảnh chụp màn hình).</p>
+      {(!electric || place !== '') && <>
+      <p className="muted">Ảnh bắt buộc ({required.length}): có thể chụp trực tiếp hoặc chọn ảnh có sẵn trong máy (ví dụ ảnh chụp màn hình).</p>
       <div className="photo-grid">
         {slots.map(([k, label]) => (
-          <PhotoInput key={k} label={label} allowGallery value={photos[k] ?? null} onChange={b => setPhotos({ ...photos, [k]: b })} />
+          <PhotoInput key={k} label={isM12 && k === 'receipt' ? `${label} (không bắt buộc)` : label} allowGallery value={photos[k] ?? null} onChange={b => setPhotos({ ...photos, [k]: b })} />
         ))}
       </div>
+      </>}
       {error && <p className="error">{error}</p>}
       <button className="btn" disabled={!valid || busy} onClick={submit}>{busy ? progress || 'Đang gửi…' : 'Gửi phiếu chờ duyệt'}</button>
 

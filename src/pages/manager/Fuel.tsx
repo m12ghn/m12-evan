@@ -16,9 +16,12 @@ interface Row {
   fuel_type: string | null; odo_at_refuel: number; quantity: number; unit_price: number; total_amount: number;
   station: string | null; photo_pump: string | null; photo_receipt: string | null; photos: Record<string, string> | null;
   battery_before: number | null; battery_after: number | null; charge_minutes: number | null;
+  charge_place?: 'm12' | 'external' | null;
   status: 'pending' | 'approved' | 'rejected'; manager_note: string | null;
 }
 type AiRow = AiInfo;
+// Nơi sạc: tài xế chọn (charge_place); phiếu cũ chưa có thì coi là M12 khi AI không đọc được hóa đơn
+const placeM12 = (r: { charge_place?: 'm12' | 'external' | null }, a?: AiRow | null) => r.charge_place === 'm12' || (!r.charge_place && isM12(a));
 const money = (n: number) => Math.round(n).toLocaleString('vi-VN') + ' đ';
 const STATUS = { pending: '⏳ Chờ duyệt', approved: '✓ Đã duyệt', rejected: '❌ Từ chối' } as const;
 
@@ -156,7 +159,7 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
       const out: Cell[][] = [['Ngày/giờ gửi phiếu', 'Biển số xe', 'Tên tài xế', 'ODO hiện tại', '% pin trước khi sạc', '% pin sau khi sạc', 'Trạm sạc', 'Bắt đầu sạc', 'Kết thúc sạc', 'Nguồn giờ sạc', 'Thời lượng sạc (phút)', 'kWh đã sạc (chốt)', 'Nguồn kWh', 'Thành tiền (đ)', 'Thành tiền trên hóa đơn (AI)', 'kWh trên hóa đơn (AI)', 'Mã phiên', 'Ghi chú AI', 'Cảnh báo']];
       const dups = duplicateCounts(data.map(x => ({ id: x.id, ai: ai[x.id] })));
       data.forEach(r => {
-        const a = ai[r.id]; const w = chargeWindow(r, a); const m12 = isM12(a);
+        const a = ai[r.id]; const w = chargeWindow(r, a); const m12 = placeM12(r, a);
         const pct = kwhFromPercent(r.battery_before, r.battery_after);
         // kWh chốt: trạm M12 → 100% = 16,7 kWh theo % pin; trạm khác → số trên hóa đơn; thiếu thì lấy số tài xế nhập
         const [kwh, kwhSrc] = m12
@@ -164,10 +167,10 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
           : a?.kwh != null ? [a.kwh, 'Hóa đơn (AI)'] : r.quantity ? [r.quantity, 'Tài xế nhập'] : [null, ''];
         out.push([
           vnTime(new Date(r.created_at)), lk.plate(tv[r.trip_id]), lk.person(r.driver_id),
-          r.odo_at_refuel, r.battery_before, r.battery_after, a?.station ?? r.station ?? '',
+          r.odo_at_refuel, r.battery_before, r.battery_after, (m12 ? 'Sạc tại kho M12' : a?.station ?? r.station ?? ''),
           vnTime(w.start), vnTime(w.end), w.source, a?.duration_min ?? r.charge_minutes ?? null, kwh, kwhSrc,
-          Math.round(r.total_amount), a?.amount ?? null, a?.kwh ?? null, a?.invoice_no ?? '', note(a),
-          [...aiFlags(r, a, dups[r.id] ?? 0), ...(m12 ? m12Flags(r) : [])].join('; '),
+          Math.round(r.total_amount), a?.amount ?? null, a?.kwh ?? null, a?.invoice_no ?? '', (r.charge_place === 'm12' ? 'Sạc tại M12 (tài xế chọn): kWh tính theo % pin' : r.charge_place === 'external' ? note(a) + ' (Sạc ngoài)' : note(a)),
+          [...(m12 ? [] : aiFlags(r, a, dups[r.id] ?? 0)), ...(m12 ? m12Flags(r) : [])].join('; '),
         ]);
       });
       if (!data.length) { setError('Không có lượt sạc điện nào trong khoảng ngày và bộ lọc đã chọn'); return; }
@@ -218,14 +221,21 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
               )}
               {over && <span className="error"> ⚠️ Vượt dung tích bình/pin ({v!.capacity} {unit})</span>}
             </p>
-            {r.energy_type === 'electric' && aiMap[r.id] && (
+            {r.energy_type === 'electric' && r.charge_place && <span className="chip">{r.charge_place === 'm12' ? '🏭 Sạc tại kho M12' : '🔌 Sạc ngoài'}</span>}
+            {r.energy_type === 'electric' && r.charge_place === 'm12' && (
+              <div className="stack" style={{ gap: 4 }}>
+                <small className="muted">⚡ kWh tính theo % pin (100% = {M12_FULL_KWH} kWh): <b>{kwhFromPercent(r.battery_before, r.battery_after) ?? '—'}</b></small>
+                {m12Flags(r).map(w => <small key={w} className="error">⚠️ {w}</small>)}
+              </div>
+            )}
+            {r.energy_type === 'electric' && r.charge_place !== 'm12' && aiMap[r.id] && (
               <div className="stack" style={{ gap: 4 }}>
                 <small className="muted">
                   🤖 {aiMap[r.id].status === 'ok'
                     ? <>Hóa đơn: <b>{aiMap[r.id].station}</b>{aiMap[r.id].kwh ? ` · ${aiMap[r.id].kwh} kWh` : ''}{aiMap[r.id].amount ? ` · ${money(aiMap[r.id].amount!)}` : ''}</>
                     : aiMap[r.id].status === 'unreadable' ? <>Không đọc được hóa đơn → <b>Sạc tại kho M12</b>{kwhFromPercent(r.battery_before, r.battery_after) != null && ` · ${kwhFromPercent(r.battery_before, r.battery_after)} kWh theo % pin`}{aiMap[r.id].raw?.reason ? ` (${aiMap[r.id].raw!.reason === 'no_image' ? 'không tải được ảnh hóa đơn' : aiMap[r.id].raw!.reason})` : ''}</> : 'AI lỗi, chưa đọc được (bấm 🤖 AI đọc hóa đơn để thử lại)'}
                 </small>
-                {[...aiFlags(r, aiMap[r.id], dupOf[r.id] ?? 0), ...(isM12(aiMap[r.id]) ? m12Flags(r) : [])].map(w => <small key={w} className="error">⚠️ {w}</small>)}
+                {[...aiFlags(r, aiMap[r.id], dupOf[r.id] ?? 0), ...(placeM12(r, aiMap[r.id]) ? m12Flags(r) : [])].map(w => <small key={w} className="error">⚠️ {w}</small>)}
               </div>
             )}
             <p className="muted">{new Date(r.created_at).toLocaleString('vi-VN')} · ODO {r.odo_at_refuel.toLocaleString()} km · {r.station || 'Chưa ghi trạm'} · {r.fuel_type}</p>
