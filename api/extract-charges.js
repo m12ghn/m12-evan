@@ -28,7 +28,6 @@ export default async function handler(req, res) {
 
   const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
   if (!DAY.test(b.from ?? '') || !DAY.test(b.to ?? '') || b.from > b.to) return fail(res, 400, 'Khoảng ngày không hợp lệ');
-  const batch = Math.min(Math.max(Number(b.batch) || 4, 1), 6);
 
   try {
     // Phiếu sạc điện trong khoảng ngày (trừ phiếu bị từ chối)
@@ -53,11 +52,16 @@ export default async function handler(req, res) {
       }
     }
     const todo = wanted.filter(x => !doneIds.has(x.id));
-    const now = todo.slice(0, batch);
+    // Hàm Vercel tối đa 60 giây → làm việc theo ngân sách thời gian: 3 luồng song song, chỉ bắt đầu phiếu mới khi còn dưới 28 giây;
+    // mỗi lần gọi AI tối đa 25 giây (quá thì tính là lỗi tạm, lần sau thử lại). Phiếu chưa kịp làm nằm trong "còn lại".
+    const t0 = Date.now();
+    const queue = todo.slice(0, 12);
+    let next = 0, started = 0;
     const stat = { ok: 0, unreadable: 0, error: 0 };
     let saveFail = 0, saveError = null;
+    const withTimeout = (u, o) => fetch(u, { ...o, signal: AbortSignal.timeout(25_000) });
 
-    await Promise.all(now.map(async r => {
+    const work = async r => {
       let rec;
       try {
         const paths = [r.photos?.receipt ?? r.photo_receipt, r.photos?.after].filter(Boolean);   // phiếu cũ chỉ có photo_receipt
@@ -67,17 +71,21 @@ export default async function handler(req, res) {
           if (blob) images.push(Buffer.from(await blob.arrayBuffer()));
         }
         // Không có ảnh hóa đơn nào tải được → coi như không đọc được
-        rec = images.length ? toRecord(await (gemini ? readReceiptGemini({ apiKey, model, images }) : readReceipt({ apiKey, model, images, base: process.env.ANTHROPIC_API_BASE || undefined })), model)
+        rec = images.length ? toRecord(await (gemini ? readReceiptGemini({ apiKey, model, images, doFetch: withTimeout }) : readReceipt({ apiKey, model, images, base: process.env.ANTHROPIC_API_BASE || undefined, doFetch: withTimeout })), model)
           : toRecord({ readable: false, reason: 'no_image' }, model);   // không tải được ảnh hóa đơn nào
       } catch (e) {
         rec = { status: 'error', station: null, amount: null, kwh: null, charged_at: null, charged_ts: null, duration_min: null, invoice_no: null, raw: null, model, error: String(e.message).slice(0, 250) };
       }
       // Chỉ tính là đã đọc khi LƯU được vào DB (trước đây lỗi lưu bị bỏ qua nên cùng một lô bị đọc đi đọc lại)
+      if (rec.status === 'error') { stat.error++; return; }   // lỗi tạm: không lưu, lần sau đọc lại
       const { error: upErr } = await admin.from('refuel_ai').upsert({ refuel_id: r.id, ...rec, created_at: new Date().toISOString() });
       if (upErr) { saveFail++; saveError = saveError ?? upErr.message; } else stat[rec.status]++;
+    };
+    await Promise.all(Array.from({ length: 3 }, async () => {
+      while (next < queue.length && Date.now() - t0 < 28_000) { started++; await work(queue[next++]); }
     }));
-    // Lỗi thì lần sau thử lại nên vẫn nằm trong "còn lại"
-    return res.json({ total: wanted.length, processed: now.length, ...stat, remaining: Math.max(0, todo.length - now.length + stat.error + saveFail), saveError });
+    const lastError = stat.error ? 'Một số phiếu bị lỗi tạm (AI phản hồi chậm hoặc quá hạn mức), sẽ tự thử lại ở lượt sau' : null;
+    return res.json({ total: wanted.length, processed: started, ...stat, remaining: Math.max(0, todo.length - stat.ok - stat.unreadable), saveError, lastError });
   } catch (e) {
     return fail(res, 500, e.message || 'Lỗi server');
   }

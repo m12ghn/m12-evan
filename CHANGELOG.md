@@ -10,10 +10,12 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### 🔧 Chỉnh sửa
 
+- **Excel lượt sạc điện: kWh theo % pin cho trạm M12, giờ bắt đầu / kết thúc sạc** _(Quản lý)_ — Sạc tại kho M12 tính kWh = (% pin sau − % pin trước) × 16,7 kWh / 100%. Thêm cột Bắt đầu sạc, Kết thúc sạc (lấy từ ảnh nếu AI đọc được; không thì ước tính từ giờ gửi phiếu và thời gian sạc), Nguồn giờ sạc, kWh đã sạc (chốt) và Nguồn kWh. Cảnh báo khi kWh tài xế nhập lệch >15% so với tính theo % pin.
 - **AI đọc hóa đơn: chỉnh theo ảnh thực tế (app Esky, màn hình trụ sạc, taplo)** _(Quản lý)_ — Prompt nhận diện đúng các loại ảnh tài xế hay gửi; ảnh taplo/ảnh xe/tủ điện không có số liệu thì mặc định 'Sạc tại kho M12'. Đọc thêm ngày giờ sạc, thời lượng, mã phiên; thống nhất tên trạm Esky viết lệch dấu về một tên chuẩn.
 
 ### 🐞 Sửa lỗi
 
+- **AI đọc hóa đơn: sửa lỗi 504 (quá thời gian của máy chủ)** _(Quản lý)_ — Mỗi lượt gọi chỉ làm trong ngân sách ~28 giây (3 luồng song song, tối đa 12 phiếu), mỗi lần gọi AI tối đa 25 giây; Gemini Flash tắt chế độ 'suy nghĩ' cho nhanh. Giao diện tự thử lại khi gặp 502/503/504 hoặc mất mạng; phiếu lỗi tạm không bị ghi là 'không đọc được' mà được đọc lại ở lượt sau.
 - **AI đọc hóa đơn: đọc được ảnh của phiếu cũ, nói rõ lý do không đọc được, cho đọc lại** _(Quản lý)_ — Phiếu cũ lưu ảnh ở cột photo_receipt nay cũng được đọc. Phiếu 'không đọc được' hiện lý do (vd 'Ảnh taplo xe…', 'không tải được ảnh hóa đơn'). Thêm ô 'đọc lại phiếu không đọc được' để chạy lại sau khi sửa.
 - **AI đọc hóa đơn: sửa lỗi đọc lặp cùng một lô (đã đọc 352/292)** _(Quản lý)_ — Trước đây nếu không lưu được kết quả vào DB thì lỗi bị bỏ qua và cùng một lô phiếu bị đọc đi đọc lại (tốn phí API). Nay báo rõ lỗi lưu, và tự dừng khi số phiếu còn lại không giảm.
 

@@ -89,7 +89,7 @@ export async function readReceiptGemini({ apiKey, model, images, base = 'https:/
     const r = await doFetch(`${base}/v1beta/models/${model}:generateContent`, {
       method: 'POST',
       headers: { 'x-goog-api-key': apiKey, 'content-type': 'application/json' },
-      body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0 } }),
+      body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0, ...(/flash/.test(model) ? { thinkingConfig: { thinkingBudget: 0 } } : {}) } }),
     });
     if ((r.status === 429 || r.status >= 500) && attempt < 2) { await new Promise(s => setTimeout(s, 1500 * (attempt + 1))); continue; }
     const j = await r.json().catch(() => ({}));
