@@ -76,11 +76,14 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
   // AI đọc ảnh hóa đơn / lịch sử sạc của các lượt sạc điện trong khoảng ngày đang chọn (chạy từng lô nhỏ ở máy chủ)
   async function runAi() {
     setAiBusy(true); setError(''); setAiMsg('Đang bắt đầu…');
-    let ok = 0, unreadable = 0, total = 0;
+    let ok = 0, unreadable = 0, total = 0, prevRemaining: number | null = null;
     try {
       for (let i = 0; i < 300; i++) {
-        const r = await aiApi<{ total: number; processed: number; ok: number; unreadable: number; error: number; remaining: number }>({ from: exFrom, to: exTo });
+        const r = await aiApi<{ total: number; processed: number; ok: number; unreadable: number; error: number; remaining: number; saveError?: string | null }>({ from: exFrom, to: exTo });
+        if (r.saveError) throw new Error(`Không lưu được kết quả AI vào cơ sở dữ liệu: ${r.saveError}. Nếu báo thiếu bảng/cột, hãy chạy lại SQL migration 015 và 016 rồi thử lại.`);
         ok += r.ok; unreadable += r.unreadable; total = r.total;
+        if (prevRemaining !== null && r.remaining >= prevRemaining) throw new Error(`Số phiếu còn lại không giảm (${r.remaining}). Đã dừng để tránh gọi AI lặp lại. Kiểm tra bảng refuel_ai.`);
+        prevRemaining = r.remaining;
         setAiMsg(`Đang đọc… đã đọc ${ok + unreadable}/${total} (đọc được ${ok}, không đọc được ${unreadable}), còn ${r.remaining}`);
         if (r.remaining === 0) break;
         if (r.ok + r.unreadable === 0) throw new Error('AI đang báo lỗi liên tục (kiểm tra ANTHROPIC_API_KEY / hạn mức). Đã đọc được ' + (ok + unreadable) + ' phiếu.');

@@ -51,6 +51,7 @@ export default async function handler(req, res) {
     const todo = wanted.filter(x => !doneIds.has(x.id));
     const now = todo.slice(0, batch);
     const stat = { ok: 0, unreadable: 0, error: 0 };
+    let saveFail = 0, saveError = null;
 
     await Promise.all(now.map(async r => {
       let rec;
@@ -67,11 +68,12 @@ export default async function handler(req, res) {
       } catch (e) {
         rec = { status: 'error', station: null, amount: null, kwh: null, charged_at: null, charged_ts: null, duration_min: null, invoice_no: null, raw: null, model, error: String(e.message).slice(0, 250) };
       }
-      stat[rec.status]++;
-      await admin.from('refuel_ai').upsert({ refuel_id: r.id, ...rec, created_at: new Date().toISOString() });
+      // Chỉ tính là đã đọc khi LƯU được vào DB (trước đây lỗi lưu bị bỏ qua nên cùng một lô bị đọc đi đọc lại)
+      const { error: upErr } = await admin.from('refuel_ai').upsert({ refuel_id: r.id, ...rec, created_at: new Date().toISOString() });
+      if (upErr) { saveFail++; saveError = saveError ?? upErr.message; } else stat[rec.status]++;
     }));
     // Lỗi thì lần sau thử lại nên vẫn nằm trong "còn lại"
-    return res.json({ total: wanted.length, processed: now.length, ...stat, remaining: Math.max(0, todo.length - now.length + stat.error) });
+    return res.json({ total: wanted.length, processed: now.length, ...stat, remaining: Math.max(0, todo.length - now.length + stat.error + saveFail), saveError });
   } catch (e) {
     return fail(res, 500, e.message || 'Lỗi server');
   }

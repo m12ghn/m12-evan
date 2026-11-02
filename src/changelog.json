@@ -3,6 +3,12 @@
     "date": "2026-11-02",
     "items": [
       {
+        "type": "fix",
+        "scope": "manager",
+        "title": "AI đọc hóa đơn: sửa lỗi đọc lặp cùng một lô (đã đọc 352/292)",
+        "detail": "Trước đây nếu không lưu được kết quả vào DB thì lỗi bị bỏ qua và cùng một lô phiếu bị đọc đi đọc lại (tốn phí API). Nay báo rõ lỗi lưu, và tự dừng khi số phiếu còn lại không giảm."
+      },
+      {
         "type": "change",
         "scope": "manager",
         "title": "AI đọc hóa đơn: chỉnh theo ảnh thực tế (app Esky, màn hình trụ sạc, taplo)",

@@ -12,6 +12,10 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 - **AI đọc hóa đơn: chỉnh theo ảnh thực tế (app Esky, màn hình trụ sạc, taplo)** _(Quản lý)_ — Prompt nhận diện đúng các loại ảnh tài xế hay gửi; ảnh taplo/ảnh xe/tủ điện không có số liệu thì mặc định 'Sạc tại kho M12'. Đọc thêm ngày giờ sạc, thời lượng, mã phiên; thống nhất tên trạm Esky viết lệch dấu về một tên chuẩn.
 
+### 🐞 Sửa lỗi
+
+- **AI đọc hóa đơn: sửa lỗi đọc lặp cùng một lô (đã đọc 352/292)** _(Quản lý)_ — Trước đây nếu không lưu được kết quả vào DB thì lỗi bị bỏ qua và cùng một lô phiếu bị đọc đi đọc lại (tốn phí API). Nay báo rõ lỗi lưu, và tự dừng khi số phiếu còn lại không giảm.
+
 ### ⚙️ Hệ thống
 
 - **Cơ sở dữ liệu: migration 016 (refuel_ai thêm charged_ts, duration_min)** _(Cả hai)_ — Lưu ngày giờ sạc và thời lượng đọc từ ảnh để phát hiện ảnh cũ / trùng.
