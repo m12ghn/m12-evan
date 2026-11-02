@@ -7,7 +7,7 @@ import SignedPhotos from '../../components/SignedPhotos';
 import { refuelSlots } from '../../lib/types';
 import { downloadPhotoZips, safeName, type ZipItem } from '../../lib/photoZip';
 import { aiApi } from '../../lib/aiApi';
-import { aiFlags, duplicateCounts, type AiInfo } from '../../lib/aiFlags';
+import { aiFlags, chargeWindow, duplicateCounts, isM12, kwhFromPercent, m12Flags, M12_FULL_KWH, vnTime, type AiInfo } from '../../lib/aiFlags';
 import { downloadCsv, downloadXlsx, type Cell } from '../../lib/excel';
 import { dayAfter, dayStart, fetchAll, ymd } from '../../lib/dates';
 
@@ -147,16 +147,27 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
         ((a as AiRow[]) ?? []).forEach(x => { ai[x.refuel_id] = x; });
       }
       const note = (a?: AiRow) => !a ? 'Chưa đọc hóa đơn' : a.status === 'ok' ? 'Đọc từ hóa đơn' : a.status === 'unreadable' ? 'Không đọc được hóa đơn → mặc định' : 'AI lỗi, cần đọc lại';
-      const out: Cell[][] = [['Ngày/giờ', 'Biển số xe', 'Tên tài xế', 'ODO hiện tại', '% pin trước khi sạc', '% pin sau khi sạc', 'Trạm sạc', 'Thành tiền (đ)', 'Thành tiền trên hóa đơn (AI)', 'kWh trên hóa đơn (AI)', 'Thời lượng sạc (phút)', 'Mã phiên', 'Ghi chú AI', 'Cảnh báo']];
+      const out: Cell[][] = [['Ngày/giờ gửi phiếu', 'Biển số xe', 'Tên tài xế', 'ODO hiện tại', '% pin trước khi sạc', '% pin sau khi sạc', 'Trạm sạc', 'Bắt đầu sạc', 'Kết thúc sạc', 'Nguồn giờ sạc', 'Thời lượng sạc (phút)', 'kWh đã sạc (chốt)', 'Nguồn kWh', 'Thành tiền (đ)', 'Thành tiền trên hóa đơn (AI)', 'kWh trên hóa đơn (AI)', 'Mã phiên', 'Ghi chú AI', 'Cảnh báo']];
       const dups = duplicateCounts(data.map(x => ({ id: x.id, ai: ai[x.id] })));
-      data.forEach(r => { const a = ai[r.id]; out.push([
-        new Date(r.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }), lk.plate(tv[r.trip_id]), lk.person(r.driver_id),
-        r.odo_at_refuel, r.battery_before, r.battery_after, a?.station ?? r.station ?? '', Math.round(r.total_amount), a?.amount ?? null, a?.kwh ?? null, a?.duration_min ?? null, a?.invoice_no ?? '', note(a), aiFlags(r, a, dups[r.id] ?? 0).join('; '),
-      ]); });
+      data.forEach(r => {
+        const a = ai[r.id]; const w = chargeWindow(r, a); const m12 = isM12(a);
+        const pct = kwhFromPercent(r.battery_before, r.battery_after);
+        // kWh chốt: trạm M12 → 100% = 16,7 kWh theo % pin; trạm khác → số trên hóa đơn; thiếu thì lấy số tài xế nhập
+        const [kwh, kwhSrc] = m12
+          ? (pct != null ? [pct, `Tính theo % pin (100% = ${M12_FULL_KWH} kWh)`] : r.quantity ? [r.quantity, 'Tài xế nhập (thiếu % pin)'] : [null, 'Thiếu % pin'])
+          : a?.kwh != null ? [a.kwh, 'Hóa đơn (AI)'] : r.quantity ? [r.quantity, 'Tài xế nhập'] : [null, ''];
+        out.push([
+          vnTime(new Date(r.created_at)), lk.plate(tv[r.trip_id]), lk.person(r.driver_id),
+          r.odo_at_refuel, r.battery_before, r.battery_after, a?.station ?? r.station ?? '',
+          vnTime(w.start), vnTime(w.end), w.source, a?.duration_min ?? r.charge_minutes ?? null, kwh, kwhSrc,
+          Math.round(r.total_amount), a?.amount ?? null, a?.kwh ?? null, a?.invoice_no ?? '', note(a),
+          [...aiFlags(r, a, dups[r.id] ?? 0), ...(m12 ? m12Flags(r) : [])].join('; '),
+        ]);
+      });
       if (!data.length) { setError('Không có lượt sạc điện nào trong khoảng ngày và bộ lọc đã chọn'); return; }
       const name = `luot-sac-dien_${exFrom}_${exTo}`;
       if (kind === 'csv') downloadCsv(`${name}.csv`, out);
-      else await downloadXlsx(`${name}.xlsx`, [{ name: 'Lượt sạc điện', rows: out, widths: [18, 13, 22, 13, 18, 18, 30, 14, 20, 18, 14, 18, 30, 60] }]);
+      else await downloadXlsx(`${name}.xlsx`, [{ name: 'Lượt sạc điện', rows: out, widths: [18, 13, 22, 13, 14, 14, 30, 18, 18, 26, 12, 14, 36, 14, 20, 16, 18, 30, 60] }]);
     } catch (e) { setError((e as Error).message); }
     setExporting(false);
   }
@@ -204,9 +215,9 @@ export default function Fuel({ lk, onChanged }: { lk: Lookups; onChanged: () => 
                 <small className="muted">
                   🤖 {aiMap[r.id].status === 'ok'
                     ? <>Hóa đơn: <b>{aiMap[r.id].station}</b>{aiMap[r.id].kwh ? ` · ${aiMap[r.id].kwh} kWh` : ''}{aiMap[r.id].amount ? ` · ${money(aiMap[r.id].amount!)}` : ''}</>
-                    : aiMap[r.id].status === 'unreadable' ? <>Không đọc được hóa đơn → <b>Sạc tại kho M12</b>{aiMap[r.id].raw?.reason ? ` (${aiMap[r.id].raw!.reason === 'no_image' ? 'không tải được ảnh hóa đơn' : aiMap[r.id].raw!.reason})` : ''}</> : 'AI lỗi, chưa đọc được (bấm 🤖 AI đọc hóa đơn để thử lại)'}
+                    : aiMap[r.id].status === 'unreadable' ? <>Không đọc được hóa đơn → <b>Sạc tại kho M12</b>{kwhFromPercent(r.battery_before, r.battery_after) != null && ` · ${kwhFromPercent(r.battery_before, r.battery_after)} kWh theo % pin`}{aiMap[r.id].raw?.reason ? ` (${aiMap[r.id].raw!.reason === 'no_image' ? 'không tải được ảnh hóa đơn' : aiMap[r.id].raw!.reason})` : ''}</> : 'AI lỗi, chưa đọc được (bấm 🤖 AI đọc hóa đơn để thử lại)'}
                 </small>
-                {aiFlags(r, aiMap[r.id], dupOf[r.id] ?? 0).map(w => <small key={w} className="error">⚠️ {w}</small>)}
+                {[...aiFlags(r, aiMap[r.id], dupOf[r.id] ?? 0), ...(isM12(aiMap[r.id]) ? m12Flags(r) : [])].map(w => <small key={w} className="error">⚠️ {w}</small>)}
               </div>
             )}
             <p className="muted">{new Date(r.created_at).toLocaleString('vi-VN')} · ODO {r.odo_at_refuel.toLocaleString()} km · {r.station || 'Chưa ghi trạm'} · {r.fuel_type}</p>

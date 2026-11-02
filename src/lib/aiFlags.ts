@@ -3,7 +3,33 @@ export interface AiInfo {
   refuel_id: string; status: 'ok' | 'unreadable' | 'error'; station: string | null; amount: number | null; kwh: number | null;
   charged_ts: string | null; invoice_no: string | null; duration_min: number | null; raw?: { reason?: string } | null;
 }
-export interface RefuelLite { id: string; created_at: string; total_amount: number; quantity: number; energy_type: string }
+export interface RefuelLite {
+  id: string; created_at: string; total_amount: number; quantity: number; energy_type: string;
+  battery_before?: number | null; battery_after?: number | null; charge_minutes?: number | null;
+}
+
+// Sạc tại kho M12: 100% pin = 16,7 kWh → kWh đã sạc suy ra từ % pin trước / sau khi sạc
+export const M12_STATION = 'Sạc tại kho M12';
+export const M12_FULL_KWH = 16.7;
+export function kwhFromPercent(before?: number | null, after?: number | null): number | null {
+  if (before == null || after == null || after < before) return null;
+  return Math.round(((after - before) / 100) * M12_FULL_KWH * 100) / 100;
+}
+export const isM12 = (a?: AiInfo | null) => a?.status === 'unreadable' || a?.station === M12_STATION;
+
+const vnFmt = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+export const vnTime = (d: Date | null) => (d ? vnFmt.format(d) : '');
+
+/** Giờ bắt đầu / kết thúc sạc. Ưu tiên giờ đọc từ ảnh; không có thì ước tính từ giờ gửi phiếu và thời gian sạc tài xế nhập. */
+export function chargeWindow(r: RefuelLite, a?: AiInfo | null): { start: Date | null; end: Date | null; source: string } {
+  const mins = a?.duration_min ?? r.charge_minutes ?? null;
+  if (a?.status === 'ok' && a.charged_ts) {
+    const start = new Date(a.charged_ts);
+    return { start, end: mins ? new Date(start.getTime() + mins * 60_000) : null, source: 'Giờ trên ảnh (AI)' };
+  }
+  const end = new Date(r.created_at);   // tài xế thường gửi phiếu ngay sau khi sạc xong
+  return { start: mins ? new Date(end.getTime() - mins * 60_000) : null, end, source: 'Ước tính từ giờ gửi phiếu' };
+}
 
 const vnd = (n: number) => `${Math.round(n).toLocaleString('vi-VN')} đ`;
 const when = (iso: string) => new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -43,4 +69,11 @@ export function aiFlags(r: RefuelLite, a: AiInfo | null | undefined, dup = 0): s
   }
   if (dup > 0) f.push(`Trùng phiên sạc với ${dup} phiếu khác`);
   return f;
+}
+
+/** Cảnh báo riêng cho lượt sạc tại kho M12 (kWh tài xế nhập lệch so với tính theo % pin). */
+export function m12Flags(r: RefuelLite): string[] {
+  const k = kwhFromPercent(r.battery_before, r.battery_after);
+  if (k != null && r.quantity && k > 0 && Math.abs(r.quantity - k) / k > 0.15) return [`kWh nhập ${r.quantity} khác tính theo % pin (${k})`];
+  return [];
 }

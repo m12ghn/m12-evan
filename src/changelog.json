@@ -3,6 +3,12 @@
     "date": "2026-11-02",
     "items": [
       {
+        "type": "change",
+        "scope": "manager",
+        "title": "Excel lượt sạc điện: kWh theo % pin cho trạm M12, giờ bắt đầu / kết thúc sạc",
+        "detail": "Sạc tại kho M12 tính kWh = (% pin sau − % pin trước) × 16,7 kWh / 100%. Thêm cột Bắt đầu sạc, Kết thúc sạc (lấy từ ảnh nếu AI đọc được; không thì ước tính từ giờ gửi phiếu và thời gian sạc), Nguồn giờ sạc, kWh đã sạc (chốt) và Nguồn kWh. Cảnh báo khi kWh tài xế nhập lệch >15% so với tính theo % pin."
+      },
+      {
         "type": "fix",
         "scope": "manager",
         "title": "AI đọc hóa đơn: đọc được ảnh của phiếu cũ, nói rõ lý do không đọc được, cho đọc lại",
