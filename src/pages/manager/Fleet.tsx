@@ -4,7 +4,6 @@ import type { Lookups } from '../../lib/useLookups';
 import { VEHICLE_STATUS, type Vehicle, type VehicleStatus } from '../../lib/types';
 import { useVehicleFilter } from '../../components/VehicleFilter';
 import { Empty, Highlights } from '../../components/ui';
-import { useVehiclePositions, normPlate, ageText } from '../../lib/positions';
 import CloseTripDialog, { type OpenTrip } from './CloseTripDialog';
 
 const STATUS = VEHICLE_STATUS;
@@ -14,7 +13,6 @@ export default function Fleet({ lk, pending, accNew }: { lk: Lookups; pending: n
   const [openTrips, setOpenTrips] = useState<OpenTrip[]>([]);
   const [closing, setClosing] = useState<{ trip: OpenTrip; vehicle: Vehicle } | null>(null);
   const [msg, setMsg] = useState('');
-  const gps = useVehiclePositions();
 
   const loadTrips = useCallback(async () => {
     const { data } = await supabase.from('trips').select('id, vehicle_id, driver_id, start_time, start_odo, start_level').eq('status', 'on_duty');
@@ -52,9 +50,7 @@ export default function Fleet({ lk, pending, accNew }: { lk: Lookups; pending: n
         <div className="card"><b>{count('inactive')}</b><span>Ngưng hoạt động</span></div>
       </div>
       {vf.ui}
-      <p className="muted" style={{ marginTop: 0 }}>Hiển thị <b>{list.length}</b> / {lk.vehicles.length} xe
-        {' · '}📍 {gps.error ? <span className="error">{gps.error}</span> : gps.updatedAt ? `vị trí cập nhật ${new Date(gps.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} (tự làm mới mỗi 5 phút)` : 'đang tải vị trí…'}
-        {' '}<button className="btn ghost" style={{ padding: '2px 8px' }} disabled={gps.loading} onClick={gps.reload}>{gps.loading ? '…' : '↻'}</button></p>
+      <p className="muted" style={{ marginTop: 0 }}>Hiển thị <b>{list.length}</b> / {lk.vehicles.length} xe</p>
       {msg && <p style={{ color: 'var(--success)' }}>{msg}</p>}
       <div className="grid">
         {list.map(v => {
@@ -67,16 +63,6 @@ export default function Fleet({ lk, pending, accNew }: { lk: Lookups; pending: n
             <p>ODO: <b>{v.odo.toLocaleString()} km</b> · Định mức {v.std_rate} {v.energy_type === 'electric' ? 'kWh' : 'L'}/100km</p>
             <div className="bar"><div className={v.energy_level < 25 ? 'low' : v.energy_level < 50 ? 'mid' : ''} style={{ width: `${v.energy_level}%` }} /></div>
             <small className="muted">{v.energy_type === 'electric' ? 'Pin' : 'Nhiên liệu'} {v.energy_level}% (~{Math.round(v.energy_level / 100 * v.capacity)} {v.energy_type === 'electric' ? 'kWh' : 'L'}) · Tài xế: {lk.person(v.driver_id)}</small>
-            {(() => {
-              const p = gps.pos[normPlate(v.plate)];
-              if (!p) return gps.updatedAt ? <small className="muted">📍 Chưa có vị trí GPS</small> : null;
-              const old = Date.now() - p.t > 60 * 60_000;
-              return (
-                <small className={old ? 'error' : 'muted'} style={{ display: 'block', marginTop: 4 }}>
-                  📍 <a href={`https://www.google.com/maps?q=${p.lat},${p.lon}`} target="_blank" rel="noreferrer">{p.lat.toFixed(5)}, {p.lon.toFixed(5)}</a> · {Math.round(p.speed)} km/h · {ageText(p.t)}{old ? ' ⚠️ GPS cũ' : ''}
-                </small>
-              );
-            })()}
             {trip && (
               <div className="stack" style={{ marginTop: 8 }}>
                 <small className={stale ? 'error' : 'muted'}>
