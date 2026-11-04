@@ -49,6 +49,7 @@ export default async function handler(req, res) {
     const role = u.role === 'dev' ? 'dev' : u.role === 'manager' ? 'manager' : 'driver';
     const { error: pErr } = await admin.from('profiles').update({
       role, email, full_name: u.full_name || null, phone: u.phone || null, license: u.license || null,
+        license_no: u.license_no || null, license_expiry: /^\d{4}-\d{2}-\d{2}$/.test(u.license_expiry ?? '') ? u.license_expiry : null,
     }).eq('id', data.user.id);
     if (pErr) {
       await admin.auth.admin.deleteUser(data.user.id); // không để lại tài khoản dở dang

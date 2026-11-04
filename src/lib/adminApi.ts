@@ -1,8 +1,8 @@
 import { supabase } from './supabase';
 
 type Payload =
-  | { action: 'create'; username: string; password: string; full_name?: string; phone?: string; license?: string; role: 'manager' | 'driver' | 'dev' }
-  | { action: 'bulk_create'; users: { username: string; password: string; full_name?: string; phone?: string; license?: string; role: 'manager' | 'driver' | 'dev' }[] }
+  | { action: 'create'; username: string; password: string; full_name?: string; phone?: string; license?: string; license_no?: string; license_expiry?: string; role: 'manager' | 'driver' | 'dev' }
+  | { action: 'bulk_create'; users: { username: string; password: string; full_name?: string; phone?: string; license?: string; license_no?: string; license_expiry?: string; role: 'manager' | 'driver' | 'dev' }[] }
   | { action: 'update'; id: string; username?: string; password?: string }
   | { action: 'set_active'; id: string; active: boolean };
 

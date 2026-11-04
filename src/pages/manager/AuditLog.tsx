@@ -25,7 +25,7 @@ const FIELD: Record<string, string> = {
   km_driven: 'Quãng đường (km)', energy_consumed: 'Tiêu hao', energy_rate: 'Tiêu hao /100km', has_damage: 'Có sự cố', damage_notes: 'Mô tả sự cố',
   quantity: 'Số lượng', unit_price: 'Đơn giá', total_amount: 'Thành tiền', manager_note: 'Ghi chú quản lý', station: 'Trạm',
   battery_before: 'Pin trước (%)', battery_after: 'Pin sau (%)', charge_minutes: 'Thời gian sạc (phút)', odo_at_refuel: 'ODO lúc cấp',
-  full_name: 'Họ tên', phone: 'SĐT', license: 'Bằng lái', role: 'Quyền', active: 'Làm việc', email: 'Tên đăng nhập',
+  full_name: 'Họ tên', phone: 'SĐT', license: 'Hạng bằng', license_no: 'Số GPLX', license_expiry: 'Hạn GPLX', role: 'Quyền', active: 'Làm việc', email: 'Tên đăng nhập',
   value: 'Giá trị', location: 'Địa điểm', description: 'Mô tả', pre_notes: 'Ghi chú nhận xe', post_notes: 'Ghi chú cuối ca',
 };
 const IGNORE = new Set(['photos', 'photos_start', 'photos_end', 'photo_pump', 'photo_receipt', 'id', 'created_at', 'start_time', 'trip_id']);

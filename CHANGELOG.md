@@ -2,6 +2,16 @@
 
 _File này được tạo tự động từ `src/changelog.json` (chạy `npm run changelog`). Cùng nội dung hiển thị trong app: trang Quản lý → tab 📝 Cập nhật._
 
+## 04/11/2026 (Thứ tư)
+
+### ✨ Tính năng mới
+
+- **Người dùng: thêm cột GPLX và Hạn GPLX** _(Quản lý)_ — Danh sách Người dùng có thêm Số GPLX (nhập tay) và Hạn GPLX (chọn ngày), sửa trực tiếp trong bảng và điền dần được. Hạn GPLX báo ⏳ khi còn ≤ 30 ngày và ⚠️ khi đã hết hạn. Form thêm người dùng và file Excel thêm hàng loạt có thêm 2 cột (GPLX, Hạn GPLX dd/mm/yyyy); cột 'Bằng lái' cũ đổi tên thành 'Hạng bằng'.
+
+### ⚙️ Hệ thống
+
+- **Cơ sở dữ liệu: migration 018 (profiles.license_no, license_expiry)** _(Cả hai)_ — Thêm số GPLX và hạn GPLX cho hồ sơ người dùng.
+
 ## 02/11/2026 (Thứ hai)
 
 ### ✨ Tính năng mới

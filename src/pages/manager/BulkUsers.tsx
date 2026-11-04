@@ -1,25 +1,26 @@
 import { useState } from 'react';
 import { downloadXlsx, readXlsxRows } from '../../lib/excel';
 import { adminUsers } from '../../lib/adminApi';
+import { parseDate } from '../../lib/license';
 import type { Lookups } from '../../lib/useLookups';
 
-const HEADERS = ['Tên đăng nhập (MSNV)', 'Mật khẩu', 'Họ tên', 'SĐT', 'Hạng bằng', 'Quyền (Tài xế/Quản lý)'];
-const KEYS = { username: 'tên đăng nhập', password: 'mật khẩu', name: 'họ tên', phone: 'sđt', license: 'hạng bằng', role: 'quyền' } as const;
+const HEADERS = ['Tên đăng nhập (MSNV)', 'Mật khẩu', 'Họ tên', 'SĐT', 'Hạng bằng', 'GPLX', 'Hạn GPLX (dd/mm/yyyy)', 'Quyền (Tài xế/Quản lý)'];
+const KEYS = { username: 'tên đăng nhập', password: 'mật khẩu', name: 'họ tên', phone: 'sđt', license: 'hạng bằng', licenseNo: 'gplx', licenseExpiry: 'hạn gplx', role: 'quyền' } as const;
 type Role = 'driver' | 'manager' | 'dev';
-interface Parsed { username: string; password: string; full_name: string; phone: string; license: string; role: Role }
+interface Parsed { username: string; password: string; full_name: string; phone: string; license: string; license_no: string; license_expiry: string; role: Role }
 
 export async function downloadUserTemplate() {
   await downloadXlsx('mau-them-nguoi-dung.xlsx', [
-    { name: 'Người dùng', widths: [22, 16, 26, 16, 12, 24], rows: [
+    { name: 'Người dùng', widths: [22, 16, 26, 16, 12, 18, 20, 24], rows: [
       HEADERS,
-      ['10002', 'MatKhau@123', 'Nguyễn Văn A', '0901234567', 'C', 'Tài xế'],
-      ['10003', 'MatKhau@456', 'Trần Văn B', '0907654321', 'FC', 'Tài xế'],
+      ['10002', 'MatKhau@123', 'Nguyễn Văn A', '0901234567', 'C', '790123456789', '31/12/2028', 'Tài xế'],
+      ['10003', 'MatKhau@456', 'Trần Văn B', '0907654321', 'FC', '', '', 'Tài xế'],
     ] },
     { name: 'Hướng dẫn', widths: [90], rows: [
       ['HƯỚNG DẪN ĐIỀN (giữ nguyên dòng tiêu đề ở sheet "Người dùng", xóa 2 dòng mẫu rồi điền người của bạn)'],
       ['• Tên đăng nhập (MSNV): bắt buộc, chỉ gồm chữ, số, . _ - ; không trùng nhau trong file.'],
       ['• Mật khẩu: bắt buộc, tối thiểu 6 ký tự. Nên dùng mật khẩu tạm rồi bảo tài xế đổi sau.'],
-      ['• Họ tên, SĐT, Hạng bằng: không bắt buộc.'],
+      ['• Họ tên, SĐT, Hạng bằng, GPLX (số giấy phép), Hạn GPLX: không bắt buộc, điền dần được. Hạn GPLX dạng dd/mm/yyyy (hoặc ô ngày của Excel).'],
       ['• Quyền: "Tài xế" hoặc "Quản lý" (để trống = Tài xế).'],
       ['• Tên đăng nhập ĐÃ có trong hệ thống sẽ bị báo lỗi và bỏ qua (không ghi đè). Đổi mật khẩu dùng nút "Đổi TK / MK".'],
       ['• Mỗi lần tối đa 500 dòng.'],
@@ -46,7 +47,8 @@ export default function BulkUsers({ lk, isDev }: { lk: Lookups; isDev: boolean }
     if (rows.length > 500) { setErrors(['Tối đa 500 dòng mỗi lần. Hãy chia nhỏ file.']); return; }
 
     const headers = Object.keys(rows[0]);
-    const col = (k: keyof typeof KEYS) => headers.find(h => h.toLowerCase().includes(KEYS[k]));
+    // 'gplx' khớp cả 'Hạn GPLX' nên cột số GPLX loại trừ cột có chữ 'hạn'; 'hạng bằng' phân biệt với 'hạn'
+    const col = (k: keyof typeof KEYS) => headers.find(h => { const t = h.toLowerCase(); return k === 'licenseNo' ? t.includes('gplx') && !t.includes('hạn') : t.includes(KEYS[k]); });
     const missing = (['username', 'password'] as const).filter(k => !col(k));
     if (missing.length) { setErrors([`Thiếu cột bắt buộc: ${missing.map(k => KEYS[k]).join(', ')}. Hãy dùng đúng file mẫu.`]); return; }
     const get = (r: Record<string, unknown>, k: keyof typeof KEYS) => { const c = col(k); return c ? String(r[c] ?? '').trim() : ''; };
@@ -68,7 +70,10 @@ export default function BulkUsers({ lk, isDev }: { lk: Lookups; isDev: boolean }
       if (/quản lý|quan ly|manager|admin/.test(rl)) role = 'manager';
       else if (/^dev/.test(rl)) { if (!isDev) { errs.push(`Dòng ${line} (${username}): chỉ Dev mới tạo được tài khoản Dev`); return; } role = 'dev'; }
       else if (rl && !/tài xế|tai xe|driver/.test(rl)) { errs.push(`Dòng ${line} (${username}): quyền "${get(r, 'role')}" không hợp lệ`); return; }
-      ok.push({ username, password, full_name: get(r, 'name'), phone: get(r, 'phone'), license: get(r, 'license'), role });
+      const expCol = col('licenseExpiry'); const expRaw = expCol ? r[expCol] : '';
+      const license_expiry = parseDate(expRaw);
+      if (expRaw !== '' && expRaw != null && !license_expiry) { errs.push(`Dòng ${line} (${username}): hạn GPLX "${String(expRaw)}" không đọc được (dùng dd/mm/yyyy)`); return; }
+      ok.push({ username, password, full_name: get(r, 'name'), phone: get(r, 'phone'), license: get(r, 'license'), license_no: get(r, 'licenseNo'), license_expiry: license_expiry ?? '', role });
     });
     setValid(ok); setErrors(errs);
   }
@@ -105,8 +110,8 @@ export default function BulkUsers({ lk, isDev }: { lk: Lookups; isDev: boolean }
       {valid.length > 0 && (
         <>
           <p>Sẽ tạo <b>{valid.length}</b> tài khoản mới{errors.length > 0 && ' (các dòng lỗi ở trên sẽ bị bỏ qua)'}.</p>
-          <div className="scroll"><table><thead><tr><th>Tên đăng nhập</th><th>Họ tên</th><th>SĐT</th><th>Bằng lái</th><th>Quyền</th></tr></thead><tbody>
-            {valid.slice(0, 50).map(u => <tr key={u.username}><td>{u.username}</td><td>{u.full_name}</td><td>{u.phone}</td><td>{u.license}</td><td>{u.role === 'dev' ? 'Dev' : u.role === 'manager' ? 'Quản lý' : 'Tài xế'}</td></tr>)}
+          <div className="scroll"><table><thead><tr><th>Tên đăng nhập</th><th>Họ tên</th><th>SĐT</th><th>Hạng bằng</th><th>GPLX</th><th>Hạn GPLX</th><th>Quyền</th></tr></thead><tbody>
+            {valid.slice(0, 50).map(u => <tr key={u.username}><td>{u.username}</td><td>{u.full_name}</td><td>{u.phone}</td><td>{u.license}</td><td>{u.license_no}</td><td>{u.license_expiry ? u.license_expiry.split('-').reverse().join('/') : '—'}</td><td>{u.role === 'dev' ? 'Dev' : u.role === 'manager' ? 'Quản lý' : 'Tài xế'}</td></tr>)}
           </tbody></table></div>
           <button className="btn" disabled={busy} onClick={commit}>{busy ? progress || 'Đang tạo…' : `Tạo ${valid.length} tài khoản`}</button>
         </>

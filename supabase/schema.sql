@@ -6,7 +6,9 @@ create table public.profiles (
   full_name text,
   email text,
   phone text,
-  license text,
+  license text,            -- hạng bằng (B2, C, FC…)
+  license_no text,         -- số GPLX
+  license_expiry date,     -- hạn GPLX
   role text not null default 'driver' check (role in ('manager','driver','dev')),
   active boolean not null default true,   -- Còn làm / Đã nghỉ
   created_at timestamptz not null default now()

@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-11-04",
+    "items": [
+      {
+        "type": "new",
+        "scope": "manager",
+        "title": "Người dùng: thêm cột GPLX và Hạn GPLX",
+        "detail": "Danh sách Người dùng có thêm Số GPLX (nhập tay) và Hạn GPLX (chọn ngày), sửa trực tiếp trong bảng và điền dần được. Hạn GPLX báo ⏳ khi còn ≤ 30 ngày và ⚠️ khi đã hết hạn. Form thêm người dùng và file Excel thêm hàng loạt có thêm 2 cột (GPLX, Hạn GPLX dd/mm/yyyy); cột 'Bằng lái' cũ đổi tên thành 'Hạng bằng'."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 018 (profiles.license_no, license_expiry)",
+        "detail": "Thêm số GPLX và hạn GPLX cho hồ sơ người dùng."
+      }
+    ]
+  },
+  {
     "date": "2026-11-02",
     "items": [
       {

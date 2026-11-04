@@ -5,6 +5,8 @@ export interface Profile {
   full_name: string | null;
   phone: string | null;
   license: string | null;
+  license_no?: string | null;       // số GPLX
+  license_expiry?: string | null;   // hạn GPLX (YYYY-MM-DD)
   email: string | null;
   role: Role;
   active?: boolean; // Còn làm / Đã nghỉ (thiếu cột = coi như còn làm)
