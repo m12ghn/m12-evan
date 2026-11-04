@@ -6,10 +6,12 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### ✨ Tính năng mới
 
+- **Đội xe: vị trí GPS mới nhất theo biển số** _(Quản lý)_ — Mỗi thẻ xe hiện vị trí GPS mới nhất (toạ độ bấm mở Google Maps, vận tốc, cách đây bao lâu; ⚠️ nếu GPS cũ quá 60 phút). Tự làm mới mỗi 5 phút khi đang mở tab, có nút ↻ làm mới ngay. Dữ liệu lấy từ Bình Anh qua máy chủ, chỉ quản lý xem được.
 - **Người dùng: thêm cột GPLX và Hạn GPLX** _(Quản lý)_ — Danh sách Người dùng có thêm Số GPLX (nhập tay) và Hạn GPLX (chọn ngày), sửa trực tiếp trong bảng và điền dần được. Hạn GPLX báo ⏳ khi còn ≤ 30 ngày và ⚠️ khi đã hết hạn. Form thêm người dùng và file Excel thêm hàng loạt có thêm 2 cột (GPLX, Hạn GPLX dd/mm/yyyy); cột 'Bằng lái' cũ đổi tên thành 'Hạng bằng'.
 
 ### ⚙️ Hệ thống
 
+- **Thêm API /api/vehicle-positions (Bình Anh GPS)** _(Cả hai)_ — Cần đặt biến môi trường BINHANH_USER, BINHANH_PASS trên Vercel (không dùng tiền tố VITE_).
 - **Cơ sở dữ liệu: migration 018 (profiles.license_no, license_expiry)** _(Cả hai)_ — Thêm số GPLX và hạn GPLX cho hồ sơ người dùng.
 
 ## 02/11/2026 (Thứ hai)
