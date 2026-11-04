@@ -15,23 +15,17 @@ let listCache = { at: 0, data: null };
 
 const jwtExp = t => { try { return JSON.parse(Buffer.from(t.split('.')[1], 'base64url').toString()).exp * 1000 || 0; } catch { return 0; } };
 
-async function publicIp() {
-  try { return (await (await fetch('https://api.ipify.org', { signal: AbortSignal.timeout(4000) })).text()).trim(); } catch { return ''; }
-}
-
 async function bhLogin() {
   const { BINHANH_USER: u, BINHANH_PASS: p } = process.env;
   if (!u || !p) throw new Error('Server chưa cấu hình BINHANH_USER / BINHANH_PASS');
   const r = await fetch(`${BASE}/api/v1/authentication/login`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ UserName: u, Password: p, IPClient: await publicIp(), AppType: 0, ClientType: 1, deviceID: 'fleetops-vercel' }),
+    body: JSON.stringify({ UserName: u, Password: p, IPClient: '', AppType: 0, ClientType: 1, deviceID: 'fleetops-vercel' }),
     signal: AbortSignal.timeout(20_000),
   });
   const j = await r.json().catch(() => null);
   const d = j && j.data;
-  // Bình Anh không đặt tên khóa cố định: lấy giá trị nào có dạng JWT
-  const JWT = /^eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*$/;
-  const tok = (d && typeof d === 'object' ? Object.values(d) : []).find(v => typeof v === 'string' && JWT.test(v)) || '';
+  const tok = (d && (d.token || d.accessToken || d.access_token)) || '';
   if (!tok) throw new Error('Bình Anh từ chối đăng nhập (có thể cần OTP / sai mật khẩu / bị khóa)');
   tokenCache = { token: tok, exp: jwtExp(tok) || Date.now() + 3600_000 };
 }
