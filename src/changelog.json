@@ -3,6 +3,24 @@
     "date": "2026-11-16",
     "items": [
       {
+        "type": "new",
+        "scope": "manager",
+        "title": "Cảnh báo bảo dưỡng định kỳ (BTBD): nhập mốc từ sheet Data BTBD",
+        "detail": "Cài đặt → 'Cập nhật mốc bảo dưỡng định kỳ (BTBD) từ Excel': chọn file Excel của sheet Data BTBD, app khớp theo biển số (bỏ dấu - và khoảng trắng) và lưu Km BD định kì tiếp theo. Cảnh báo tính theo ODO hiện tại của xe trong app: Quá hạn (≤ 0 km), Đến kỳ (≤ 300 km), Sắp đến kỳ (≤ 1.000 km). Hiện ở Đội xe (điểm cần lưu ý + trên từng xe) và tab Bảo trì (bảng 🔧 Cảnh báo BTBD)."
+      },
+      {
+        "type": "change",
+        "scope": "manager",
+        "title": "Bảo trì: ghi 'Bảo dưỡng định kỳ' có ô Km BD kỳ tới",
+        "detail": "Khi ghi nhật ký bảo dưỡng định kỳ có thể nhập luôn Km BD kỳ tới để cảnh báo tự tính lại."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 020 (vehicles.service_next_km…)",
+        "detail": "Thêm mốc BD kế tiếp, km còn lại theo sheet, phân loại theo sheet và thời điểm cập nhật cho từng xe."
+      },
+      {
         "type": "change",
         "scope": "manager",
         "title": "Bảo trì: xem theo đợt (Xe – BTBD/Tai nạn – Ngày bắt đầu – Ngày kết thúc)",

@@ -22,6 +22,17 @@ export function downloadCsv(filename: string, rows: Cell[][]) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+/** Đọc file Excel có nhiều sheet: chọn sheet đầu tiên có dòng tiêu đề thỏa pick(headers). Trả null nếu không sheet nào khớp. */
+export async function readXlsxSheet(file: File, pick: (headers: string[]) => boolean): Promise<{ sheet: string; rows: Record<string, unknown>[] } | null> {
+  const XLSX = await import('xlsx');
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  for (const name of wb.SheetNames) {
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[name], { defval: '', raw: true });
+    if (rows.length && pick(Object.keys(rows[0]))) return { sheet: name, rows };
+  }
+  return null;
+}
+
 export async function readXlsxRows(file: File): Promise<Record<string, unknown>[]> {
   const XLSX = await import('xlsx');
   const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });

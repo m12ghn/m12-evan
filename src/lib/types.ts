@@ -30,6 +30,10 @@ export interface Vehicle {
   energy_level: number;
   status: VehicleStatus;
   driver_id: string | null;
+  service_next_km?: number | null;        // Km BD định kỳ tiếp theo
+  service_sheet_left_km?: number | null;  // Km còn lại theo sheet lúc nhập
+  service_sheet_notice?: string | null;   // phân loại BTBD theo sheet
+  service_synced_at?: string | null;
 }
 
 export interface Trip {

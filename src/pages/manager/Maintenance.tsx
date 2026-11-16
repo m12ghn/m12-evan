@@ -10,6 +10,7 @@ import SignedPhotos from '../../components/SignedPhotos';
 import PhotoList from '../../components/PhotoList';
 import { useVehicleFilter } from '../../components/VehicleFilter';
 import { Empty, Pager, Skeleton } from '../../components/ui';
+import { SERVICE_LABEL, SOON_KM, serviceLeft, serviceState } from '../../lib/service';
 import { buildEpisodes, daysBetween, type Episode } from '../../lib/episodes';
 
 type Kind = 'service' | 'repair' | 'accident_repair' | 'inspection' | 'other' | 'status';
@@ -29,7 +30,7 @@ const money = (n: number) => (n > 0 ? `${Math.round(n).toLocaleString('vi-VN')} 
 const PAGE = 50;
 const EP_LABEL = { maintenance: 'BTBD (bảo trì bảo dưỡng)', repair: 'Tai nạn (sửa chữa)' } as const;
 const dayTime = (s: string | null) => (s ? new Date(s).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null);
-const EMPTY_FORM = { vehicle: '', kind: 'service' as Exclude<Kind, 'status'>, description: '', performed_on: ymd(new Date()), odo: '', garage: '', cost: '', status: '' };
+const EMPTY_FORM = { vehicle: '', kind: 'service' as Exclude<Kind, 'status'>, description: '', performed_on: ymd(new Date()), odo: '', garage: '', cost: '', status: '', next_km: '' };
 
 export default function Maintenance({ lk }: { lk: Lookups }) {
   const { session } = useAuth();
@@ -39,6 +40,7 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
   const [to, setTo] = useState(ymd(today));
   const [rows, setRows] = useState<Row[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [dueAll, setDueAll] = useState(false);
   const [view, setView] = useState<'episodes' | 'log'>('episodes');
   const [epKind, setEpKind] = useState('');        // '', maintenance, repair
   const [epState, setEpState] = useState('');      // '', open, done
@@ -71,6 +73,10 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
     && (!epKind || e.kind === epKind) && (!epState || (epState === 'open') === e.open)
     // trong khoảng ngày: đợt giao với khoảng đã chọn; đợt chưa xong luôn hiện
     && (e.open || !e.start || !e.end || (e.start < dayAfter(to) && e.end >= dayStart(from))));
+  // Bảng cảnh báo BTBD: xe có mốc BD tiếp theo, còn ít km nhất lên đầu (mặc định chỉ xe sắp / đến kỳ / quá hạn)
+  const dueRows = lk.vehicles.filter(v => v.status !== 'inactive' && v.service_next_km != null)
+    .map(v => ({ v, left: serviceLeft(v)!, st: serviceState(serviceLeft(v)) }))
+    .filter(x => dueAll || x.st !== 'ok').sort((a, b) => a.left - b.left);
   const epPage = eps.slice((page - 1) * PAGE, page * PAGE);
   const epCost = eps.reduce((s, e) => s + e.cost, 0);
   const epOpen = eps.filter(e => e.open).length;
@@ -91,6 +97,8 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
         p_photos: photos.map((_, i) => up[i]), p_accident: null, p_vehicle_status: f.status || null,
       });
       if (e) throw e;
+      // Bảo dưỡng định kỳ: cập nhật luôn mốc BD kỳ tới của xe (để cảnh báo tính lại)
+      if (f.next_km !== '') await supabase.from('vehicles').update({ service_next_km: Number(f.next_km), service_synced_at: new Date().toISOString() }).eq('id', f.vehicle);
       setF(EMPTY_FORM); setPhotos([]); setAdding(false); setMsg('Đã ghi nhật ký bảo trì'); lk.reload(); await load();
     } catch (e) { setError((e as Error).message); }
     setBusy(false);
@@ -126,6 +134,26 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
 
       <div className="card stack">
         <div className="row between" style={{ flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0 }}>🔧 Cảnh báo bảo dưỡng định kỳ (BTBD)</h3>
+          <label className="row" style={{ fontSize: 12 }}><input type="checkbox" checked={dueAll} onChange={e => setDueAll(e.target.checked)} /> hiện cả xe chưa đến kỳ</label>
+        </div>
+        {dueRows.length === 0
+          ? <Empty>{lk.vehicles.some(v => v.service_next_km != null) ? `Không có xe nào còn ≤ ${SOON_KM.toLocaleString('vi-VN')} km tới kỳ BTBD.` : 'Chưa có mốc BTBD. Vào Cài đặt → "Cập nhật mốc bảo dưỡng định kỳ (BTBD) từ Excel" để nhập từ sheet Data BTBD.'}</Empty>
+          : <div className="scroll"><table>
+              <thead><tr><th>Xe</th><th className="num">ODO hiện tại</th><th className="num">Km BD kỳ tới</th><th className="num">Còn lại</th><th>Tình trạng</th><th>Theo sheet</th></tr></thead>
+              <tbody>{dueRows.map(({ v, left, st }) => (
+                <tr key={v.id}>
+                  <td><b>{v.plate}</b><br /><small className="muted">{v.type}</small></td>
+                  <td className="num">{v.odo.toLocaleString('vi-VN')}</td><td className="num">{v.service_next_km!.toLocaleString('vi-VN')}</td>
+                  <td className={`num ${st === 'over' || st === 'urgent' ? 'error' : ''}`}>{left <= 0 ? `quá ${Math.abs(left).toLocaleString('vi-VN')}` : left.toLocaleString('vi-VN')} km</td>
+                  <td><span className={`chip ${st === 'over' ? 'repair' : st === 'ok' ? 'on_duty' : 'maintenance'}`}>{SERVICE_LABEL[st]}</span></td>
+                  <td><small className="muted">{v.service_sheet_notice ?? '—'}{v.service_synced_at ? ` · ${new Date(v.service_synced_at).toLocaleDateString('vi-VN')}` : ''}</small></td>
+                </tr>))}</tbody>
+            </table></div>}
+      </div>
+
+      <div className="card stack">
+        <div className="row between" style={{ flexWrap: 'wrap' }}>
           <h3 style={{ margin: 0 }}>Nhật ký bảo trì / bảo dưỡng / sửa chữa</h3>
           <button className="btn" onClick={() => { setAdding(!adding); setError(''); setMsg(''); }}>{adding ? 'Đóng' : '+ Ghi nhật ký bảo trì'}</button>
         </div>
@@ -138,6 +166,7 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
               <label>Ngày thực hiện<input type="date" value={f.performed_on} onChange={e => setF({ ...f, performed_on: e.target.value })} /></label>
               <label>ODO (km)<input inputMode="numeric" value={f.odo} onChange={e => setF({ ...f, odo: e.target.value.replace(/\D/g, '') })} /></label>
               <label>Nơi thực hiện (garage / xưởng)<input value={f.garage} onChange={e => setF({ ...f, garage: e.target.value })} /></label>
+              {f.kind === 'service' && <label>Km BD kỳ tới (tùy chọn)<input inputMode="numeric" placeholder="vd. 450000" value={f.next_km} onChange={e => setF({ ...f, next_km: e.target.value.replace(/\D/g, '') })} /></label>}
               <label>Chi phí (đ)<input inputMode="numeric" value={f.cost ? Number(f.cost).toLocaleString('vi-VN') : ''} onChange={e => setF({ ...f, cost: e.target.value.replace(/\D/g, '') })} /></label>
               <label>Trạng thái xe sau khi ghi<select value={f.status} onChange={e => setF({ ...f, status: e.target.value })}>
                 <option value="">Không đổi</option>{(['maintenance', 'repair', 'ready', 'inactive'] as const).map(k => <option key={k} value={k}>{VEHICLE_STATUS[k]}</option>)}</select></label>

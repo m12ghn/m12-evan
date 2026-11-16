@@ -6,14 +6,17 @@ _File này được tạo tự động từ `src/changelog.json` (chạy `npm ru
 
 ### ✨ Tính năng mới
 
+- **Cảnh báo bảo dưỡng định kỳ (BTBD): nhập mốc từ sheet Data BTBD** _(Quản lý)_ — Cài đặt → 'Cập nhật mốc bảo dưỡng định kỳ (BTBD) từ Excel': chọn file Excel của sheet Data BTBD, app khớp theo biển số (bỏ dấu - và khoảng trắng) và lưu Km BD định kì tiếp theo. Cảnh báo tính theo ODO hiện tại của xe trong app: Quá hạn (≤ 0 km), Đến kỳ (≤ 300 km), Sắp đến kỳ (≤ 1.000 km). Hiện ở Đội xe (điểm cần lưu ý + trên từng xe) và tab Bảo trì (bảng 🔧 Cảnh báo BTBD).
 - **Tab 🔧 Bảo trì: nhật ký bảo trì / bảo dưỡng / sửa chữa xe** _(Quản lý)_ — Xem lịch sử theo khoảng ngày + lọc Loại, Loại xe, Năng lượng, Biển số; phân trang, tải Excel, tổng chi phí, xe đang bảo dưỡng/sửa chữa. Nút + Ghi nhật ký bảo trì: chọn xe, loại (bảo dưỡng định kỳ, sửa chữa, sửa chữa tai nạn, kiểm định, khác), ngày thực hiện, ODO, nơi thực hiện, chi phí, nội dung, ảnh, và tùy chọn đổi luôn trạng thái xe.
 
 ### 🔧 Chỉnh sửa
 
+- **Bảo trì: ghi 'Bảo dưỡng định kỳ' có ô Km BD kỳ tới** _(Quản lý)_ — Khi ghi nhật ký bảo dưỡng định kỳ có thể nhập luôn Km BD kỳ tới để cảnh báo tự tính lại.
 - **Bảo trì: xem theo đợt (Xe – BTBD/Tai nạn – Ngày bắt đầu – Ngày kết thúc)** _(Quản lý)_ — Tab Bảo trì mặc định hiện từng đợt: xe vào Bảo dưỡng (BTBD) hoặc Đang sửa chữa tai nạn (Tai nạn) lúc nào, ra lúc nào; chưa có ngày kết thúc nghĩa là xe chưa xử lý xong (⏳, luôn hiện kể cả ngoài khoảng ngày). Có số ngày, chi phí và các lần ghi chi tiết gắn vào đợt, lọc theo Nội dung / Tình trạng / Loại xe / Biển số, tải Excel theo đợt. Nút 🧾 Nhật ký chi tiết vẫn xem từng dòng ghi.
 
 ### ⚙️ Hệ thống
 
+- **Cơ sở dữ liệu: migration 020 (vehicles.service_next_km…)** _(Cả hai)_ — Thêm mốc BD kế tiếp, km còn lại theo sheet, phân loại theo sheet và thời điểm cập nhật cho từng xe.
 - **Cơ sở dữ liệu: migration 019 (vehicle_maintenance)** _(Cả hai)_ — Trước đây chỉ lưu trạng thái hiện tại của xe. Nay có bảng nhật ký riêng, không sửa/xóa được; tự ghi mỗi lần xe vào/ra trạng thái Bảo dưỡng / Sửa chữa (kể cả tài xế báo hư hỏng cuối ca, quản lý đóng ca) và nhập lại các lần đổi trạng thái đã có trong Nhật ký thao tác.
 
 ## 04/11/2026 (Thứ tư)

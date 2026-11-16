@@ -4,6 +4,7 @@ import type { Lookups } from '../../lib/useLookups';
 import { VEHICLE_STATUS, type Vehicle, type VehicleStatus } from '../../lib/types';
 import { adminUsers, usernameOf } from '../../lib/adminApi';
 import BulkVehicles from './BulkVehicles';
+import BulkService from './BulkService';
 import BulkUsers from './BulkUsers';
 import { useAuth } from '../../lib/auth';
 import { daysLeft, licenseState } from '../../lib/license';
@@ -64,6 +65,8 @@ export default function Settings({ lk, isDev }: { lk: Lookups; isDev: boolean })
       </form>
 
       <BulkVehicles lk={lk} />
+
+      <BulkService lk={lk} />
 
       <div className="card scroll">
         <h3>Danh sách xe ({lk.vehicles.length})</h3>

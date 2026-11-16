@@ -4,6 +4,7 @@ import type { Lookups } from '../../lib/useLookups';
 import { VEHICLE_STATUS, type Vehicle, type VehicleStatus } from '../../lib/types';
 import { useVehicleFilter } from '../../components/VehicleFilter';
 import { Empty, Highlights } from '../../components/ui';
+import { SERVICE_LABEL, serviceLeft, serviceState } from '../../lib/service';
 import CloseTripDialog, { type OpenTrip } from './CloseTripDialog';
 
 const STATUS = VEHICLE_STATUS;
@@ -36,6 +37,12 @@ export default function Fleet({ lk, pending, accNew }: { lk: Lookups; pending: n
   if (accNew > 0) warn.push(`${accNew} báo cáo tai nạn mới chưa xử lý.`);
   const nRepair = lk.vehicles.filter(v => v.status === 'repair' || v.status === 'maintenance').length;
   if (nRepair > 0) warn.push(`${nRepair} xe đang bảo dưỡng / sửa chữa tai nạn.`);
+  // Cảnh báo BTBD: so ODO hiện tại của xe với mốc "Km BD định kỳ tiếp theo" (bỏ qua xe ngưng hoạt động)
+  const due = lk.vehicles.filter(v => v.status !== 'inactive').map(v => ({ v, left: serviceLeft(v) }))
+    .filter(x => x.left != null && serviceState(x.left) !== 'ok').sort((a, b) => a.left! - b.left!);
+  const overList = due.filter(x => serviceState(x.left) === 'over'), nearList = due.filter(x => serviceState(x.left) !== 'over');
+  if (overList.length) warn.push(`${overList.length} xe quá hạn BTBD: ${overList.slice(0, 5).map(x => x.v.plate).join(', ')}${overList.length > 5 ? '…' : ''}.`);
+  if (nearList.length) warn.push(`${nearList.length} xe sắp / đến kỳ BTBD (còn ≤ 1.000 km): ${nearList.slice(0, 5).map(x => `${x.v.plate} (${x.left!.toLocaleString('vi-VN')} km)`).join(', ')}${nearList.length > 5 ? '…' : ''}.`);
   const count = (s: VehicleStatus) => lk.vehicles.filter(v => v.status === s).length;
   const list = lk.vehicles.filter(v => vf.match(v.id, v.driver_id, v.status));
 
@@ -63,6 +70,11 @@ export default function Fleet({ lk, pending, accNew }: { lk: Lookups; pending: n
             <p>ODO: <b>{v.odo.toLocaleString()} km</b> · Định mức {v.std_rate} {v.energy_type === 'electric' ? 'kWh' : 'L'}/100km</p>
             <div className="bar"><div className={v.energy_level < 25 ? 'low' : v.energy_level < 50 ? 'mid' : ''} style={{ width: `${v.energy_level}%` }} /></div>
             <small className="muted">{v.energy_type === 'electric' ? 'Pin' : 'Nhiên liệu'} {v.energy_level}% (~{Math.round(v.energy_level / 100 * v.capacity)} {v.energy_type === 'electric' ? 'kWh' : 'L'}) · Tài xế: {lk.person(v.driver_id)}</small>
+            {(() => { const left = serviceLeft(v); const st = serviceState(left);
+              return st === 'none' ? null : (
+                <small className={st === 'over' || st === 'urgent' ? 'error' : st === 'soon' ? '' : 'muted'} style={st === 'soon' ? { color: 'var(--warning)' } : undefined}>
+                  🔧 {SERVICE_LABEL[st]}: {left! <= 0 ? `quá ${Math.abs(left!).toLocaleString('vi-VN')} km` : `còn ${left!.toLocaleString('vi-VN')} km`} (mốc {v.service_next_km!.toLocaleString('vi-VN')})
+                </small>); })()}
             {trip && (
               <div className="stack" style={{ marginTop: 8 }}>
                 <small className={stale ? 'error' : 'muted'}>

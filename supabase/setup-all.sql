@@ -115,7 +115,11 @@ create table public.vehicles (
   odo integer not null default 0,
   energy_level integer not null default 50 check (energy_level between 0 and 100),  -- % bình / % pin
   status text not null default 'ready' check (status in ('ready','on_duty','maintenance','inactive','repair')),
-  driver_id uuid references public.profiles(id)
+  driver_id uuid references public.profiles(id),
+  service_next_km integer,        -- Km bảo dưỡng định kỳ (BTBD) tiếp theo
+  service_sheet_left_km integer,  -- Km còn lại theo sheet lúc nhập (tham khảo)
+  service_sheet_notice text,      -- Phân loại BTBD theo sheet lúc nhập
+  service_synced_at timestamptz   -- lần cập nhật mốc BTBD gần nhất
 );
 
 -- 3. Ca vận hành ---------------------------------------------------------------
