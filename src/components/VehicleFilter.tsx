@@ -4,7 +4,7 @@ import MultiSelect, { type Opt } from './MultiSelect';
 
 // Bộ lọc dùng chung cho các trang quản lý: trạng thái, loại xe (Van Gaz, Van điện…), năng lượng, biển số, tài xế.
 // Mỗi ô vừa gõ để tìm vừa chọn được nhiều giá trị; để trống = không lọc.
-export function useVehicleFilter(lk: Lookups, opts?: { statuses?: Opt[]; defaultStatuses?: string[]; statusLabel?: string; hideDriver?: boolean }) {
+export function useVehicleFilter(lk: Lookups, opts?: { statuses?: Opt[]; defaultStatuses?: string[]; statusLabel?: string; hideDriver?: boolean; hideStatus?: boolean }) {
   const [statuses, setStatuses] = useState<string[]>(opts?.defaultStatuses ?? []);
   const [types, setTypes] = useState<string[]>([]);
   const [energies, setEnergies] = useState<string[]>([]);
@@ -41,7 +41,7 @@ export function useVehicleFilter(lk: Lookups, opts?: { statuses?: Opt[]; default
   ].filter(Boolean);
   const ui = (
     <div className="filters" style={{ marginBottom: 12 }}>
-      {opts?.statuses && <MultiSelect label={opts.statusLabel ?? 'Trạng thái'} options={opts.statuses} value={statuses} onChange={setStatuses} />}
+      {opts?.statuses && !opts.hideStatus && <MultiSelect label={opts.statusLabel ?? 'Trạng thái'} options={opts.statuses} value={statuses} onChange={setStatuses} />}
       <MultiSelect label="Loại xe" options={typeOpts} value={types} onChange={setTypes} />
       <MultiSelect label="Năng lượng" options={[{ value: 'fuel', label: 'Xăng / Dầu' }, { value: 'electric', label: 'Điện' }]} value={energies} onChange={setEnergies} />
       <MultiSelect label="Biển số" options={plateOpts} value={plates} onChange={setPlates} />

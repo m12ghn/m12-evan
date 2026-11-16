@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { uploadPhotos } from '../../lib/storage';
 import { useAuth } from '../../lib/auth';
@@ -10,6 +10,7 @@ import SignedPhotos from '../../components/SignedPhotos';
 import PhotoList from '../../components/PhotoList';
 import { useVehicleFilter } from '../../components/VehicleFilter';
 import { Empty, Pager, Skeleton } from '../../components/ui';
+import { buildEpisodes, daysBetween, type Episode } from '../../lib/episodes';
 
 type Kind = 'service' | 'repair' | 'accident_repair' | 'inspection' | 'other' | 'status';
 interface Row {
@@ -26,6 +27,8 @@ const fmt = (s: string) => new Date(s).toLocaleString('vi-VN', { dateStyle: 'sho
 const day = (s: string | null) => (s ? s.split('-').reverse().join('/') : '—');
 const money = (n: number) => (n > 0 ? `${Math.round(n).toLocaleString('vi-VN')} đ` : '—');
 const PAGE = 50;
+const EP_LABEL = { maintenance: 'BTBD (bảo trì bảo dưỡng)', repair: 'Tai nạn (sửa chữa)' } as const;
+const dayTime = (s: string | null) => (s ? new Date(s).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null);
 const EMPTY_FORM = { vehicle: '', kind: 'service' as Exclude<Kind, 'status'>, description: '', performed_on: ymd(new Date()), odo: '', garage: '', cost: '', status: '' };
 
 export default function Maintenance({ lk }: { lk: Lookups }) {
@@ -36,6 +39,9 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
   const [to, setTo] = useState(ymd(today));
   const [rows, setRows] = useState<Row[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [view, setView] = useState<'episodes' | 'log'>('episodes');
+  const [epKind, setEpKind] = useState('');        // '', maintenance, repair
+  const [epState, setEpState] = useState('');      // '', open, done
   const [open, setOpen] = useState('');
   const [page, setPage] = useState(1);
   const [adding, setAdding] = useState(false);
@@ -45,19 +51,30 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const vf = useVehicleFilter(lk, {
-    statuses: (Object.keys(KIND) as Kind[]).map(k => ({ value: k, label: KIND[k] })), statusLabel: 'Loại', hideDriver: true,
+    statuses: (Object.keys(KIND) as Kind[]).map(k => ({ value: k, label: KIND[k] })), statusLabel: 'Loại', hideDriver: true, hideStatus: view === 'episodes',
   });
 
   const load = useCallback(async () => {
     setLoaded(false);
-    const r = await fetchAll<Row>((a, b) => supabase.from('vehicle_maintenance').select('*')
-      .gte('at', dayStart(from)).lt('at', dayAfter(to)).order('at', { ascending: false }).range(a, b));
+    // Tải toàn bộ nhật ký (ít dòng) để ghép đúng các đợt bắt đầu → kết thúc; khoảng ngày chỉ dùng để lọc khi hiển thị
+    const r = await fetchAll<Row>((a, b) => supabase.from('vehicle_maintenance').select('*').order('at', { ascending: false }).range(a, b));
     setRows(r); setLoaded(true);
-  }, [from, to]);
-  useEffect(() => { if (from && to && from <= to) load(); }, [load, from, to]);
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const list = rows.filter(r => vf.match(r.vehicle_id, null, r.kind));
-  useEffect(() => { setPage(1); }, [rows, vf.key]);
+  const inRange = (iso: string) => iso >= dayStart(from) && iso < dayAfter(to);
+  const list = rows.filter(r => inRange(r.at) && vf.match(r.vehicle_id, null, r.kind));
+  // Các đợt: BTBD / Tai nạn, ngày bắt đầu → ngày kết thúc (chưa có ngày kết thúc = xe chưa xử lý xong)
+  const currentStatus = useMemo(() => Object.fromEntries(lk.vehicles.map(v => [v.id, v.status])), [lk.vehicles]);
+  const allEps = useMemo(() => buildEpisodes(rows, currentStatus), [rows, currentStatus]);
+  const eps = allEps.filter(e => vf.match(e.vehicle_id, null, undefined, true)
+    && (!epKind || e.kind === epKind) && (!epState || (epState === 'open') === e.open)
+    // trong khoảng ngày: đợt giao với khoảng đã chọn; đợt chưa xong luôn hiện
+    && (e.open || !e.start || !e.end || (e.start < dayAfter(to) && e.end >= dayStart(from))));
+  const epPage = eps.slice((page - 1) * PAGE, page * PAGE);
+  const epCost = eps.reduce((s, e) => s + e.cost, 0);
+  const epOpen = eps.filter(e => e.open).length;
+  useEffect(() => { setPage(1); }, [rows, vf.key, view, epKind, epState, from, to]);
   const pageRows = list.slice((page - 1) * PAGE, page * PAGE);
   const total = list.reduce((s, r) => s + Number(r.cost || 0), 0);
   const inShop = lk.vehicles.filter(v => v.status === 'maintenance' || v.status === 'repair');
@@ -79,6 +96,16 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
     setBusy(false);
   }
 
+  async function exportEpisodes() {
+    const out: Cell[][] = [['Biển số', 'Loại xe', 'Nội dung', 'Ngày bắt đầu', 'Ngày kết thúc', 'Tình trạng', 'Số ngày', 'Chi phí (đ)', 'Chi tiết']];
+    eps.forEach(e => out.push([
+      lk.plate(e.vehicle_id), lk.vehicle(e.vehicle_id)?.type ?? '', EP_LABEL[e.kind], dayTime(e.start) ?? 'Chưa rõ', dayTime(e.end) ?? '',
+      e.open ? 'Chưa xử lý xong' : 'Đã xử lý xong', daysBetween(e.start, e.end), Math.round(e.cost),
+      e.items.map(it => `${day(it.performed_on)}: ${it.description}${it.garage ? ` (${it.garage})` : ''}${Number(it.cost) > 0 ? ` - ${money(Number(it.cost))}` : ''}`).join(' | '),
+    ]));
+    await downloadXlsx(`bao-tri-theo-dot_${from}_${to}.xlsx`, [{ name: 'Theo đợt', rows: out, widths: [13, 24, 26, 14, 14, 18, 10, 14, 80] }]);
+  }
+
   async function exportXlsx() {
     const out: Cell[][] = [['Thời gian ghi', 'Ngày thực hiện', 'Biển số', 'Loại xe', 'Loại', 'Nội dung', 'Trạng thái trước', 'Trạng thái sau', 'ODO', 'Nơi thực hiện', 'Chi phí (đ)', 'Người ghi', 'Nguồn']];
     [...list].reverse().forEach(r => out.push([
@@ -92,9 +119,9 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
   return (
     <div className="stack">
       <div className="kpis">
-        <div className="card"><b>{list.length}</b><span>Lượt trong kỳ</span></div>
-        <div className="card"><b>{Math.round(total).toLocaleString('vi-VN')}</b><span>Tổng chi phí (đ)</span></div>
-        <div className={`card${inShop.length ? ' warn' : ''}`}><b>{inShop.length}</b><span>Xe đang bảo dưỡng / sửa chữa{inShop.length ? `: ${inShop.slice(0, 4).map(v => v.plate).join(', ')}${inShop.length > 4 ? '…' : ''}` : ''}</span></div>
+        <div className="card"><b>{view === 'episodes' ? eps.length : list.length}</b><span>{view === 'episodes' ? 'Đợt BTBD / Tai nạn' : 'Dòng nhật ký trong kỳ'}</span></div>
+        <div className="card"><b>{Math.round(view === 'episodes' ? epCost : total).toLocaleString('vi-VN')}</b><span>Tổng chi phí đã ghi (đ)</span></div>
+        <div className={`card${inShop.length ? ' warn' : ''}`}><b>{inShop.length}</b><span>Xe chưa xử lý xong{inShop.length ? `: ${inShop.slice(0, 4).map(v => v.plate).join(', ')}${inShop.length > 4 ? '…' : ''}` : ''}</span></div>
       </div>
 
       <div className="card stack">
@@ -121,16 +148,66 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
             <div className="row"><button className="btn" disabled={busy || !f.vehicle || !f.description.trim()} onClick={save}>{busy ? 'Đang lưu…' : 'Lưu nhật ký'}</button></div>
           </div>
         )}
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <button className={`btn ${view === 'episodes' ? '' : 'ghost'}`} onClick={() => setView('episodes')}>📅 Theo đợt (bắt đầu → kết thúc)</button>
+          <button className={`btn ${view === 'log' ? '' : 'ghost'}`} onClick={() => setView('log')}>🧾 Nhật ký chi tiết</button>
+        </div>
         <div className="filters">
           <label>Từ ngày<input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} /></label>
           <label>Đến ngày<input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} /></label>
+          {view === 'episodes' && <>
+            <label>Nội dung<select value={epKind} onChange={e => setEpKind(e.target.value)}><option value="">Tất cả</option><option value="maintenance">BTBD (bảo trì bảo dưỡng)</option><option value="repair">Tai nạn (sửa chữa)</option></select></label>
+            <label>Tình trạng<select value={epState} onChange={e => setEpState(e.target.value)}><option value="">Tất cả</option><option value="open">Chưa xử lý xong</option><option value="done">Đã xử lý xong</option></select></label>
+          </>}
         </div>
         {vf.ui}
         <div className="row between" style={{ flexWrap: 'wrap' }}>
-          <p className="muted" style={{ margin: 0 }}>Hiển thị <b>{list.length}</b> / {rows.length} dòng trong khoảng ngày đã chọn</p>
-          <button className="btn ghost" disabled={!list.length} onClick={exportXlsx}>⬇️ Tải Excel ({list.length} dòng)</button>
+          <p className="muted" style={{ margin: 0 }}>{view === 'episodes'
+            ? <>Hiển thị <b>{eps.length}</b> đợt · <b>{epOpen}</b> chưa xử lý xong (đợt chưa xong luôn hiện, bất kể khoảng ngày)</>
+            : <>Hiển thị <b>{list.length}</b> / {rows.length} dòng trong khoảng ngày đã chọn</>}</p>
+          <button className="btn ghost" disabled={view === 'episodes' ? !eps.length : !list.length} onClick={view === 'episodes' ? exportEpisodes : exportXlsx}>⬇️ Tải Excel ({view === 'episodes' ? eps.length : list.length} dòng)</button>
         </div>
 
+        {view === 'episodes' && (
+          <div className="scroll">
+            <table>
+              <thead><tr><th>Xe</th><th>Nội dung</th><th>Ngày bắt đầu</th><th>Ngày kết thúc</th><th className="num">Số ngày</th><th className="num">Chi phí</th><th>Chi tiết</th></tr></thead>
+              <tbody>
+                {epPage.map((e: Episode) => (
+                  <Fragment key={e.key}>
+                    <tr>
+                      <td><b>{lk.plate(e.vehicle_id)}</b><br /><small className="muted">{lk.vehicle(e.vehicle_id)?.type}</small></td>
+                      <td><span className={`chip ${e.kind === 'repair' ? 'repair' : 'maintenance'}`}>{EP_LABEL[e.kind]}</span></td>
+                      <td>{e.start ? <>{dayTime(e.start)}<br /><small className="muted">{new Date(e.start).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</small></> : <span className="muted">Chưa rõ</span>}</td>
+                      <td>{e.end ? <>{dayTime(e.end)}<br /><small className="muted">{new Date(e.end).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</small></> : <span className="chip on_duty" style={{ background: 'var(--warn-soft)', color: 'var(--warning)' }}>⏳ Chưa xử lý xong</span>}</td>
+                      <td className="num">{daysBetween(e.start, e.end) ?? '—'}</td>
+                      <td className="num">{money(e.cost)}</td>
+                      <td>{e.items.length ? <button className="btn ghost" onClick={() => setOpen(open === e.key ? '' : e.key)}>{e.items.length} lần ghi</button> : <span className="muted">—</span>}</td>
+                    </tr>
+                    {open === e.key && (
+                      <tr><td colSpan={7}>
+                        <div className="stack">
+                          {e.items.map(it => (
+                            <div key={it.id} style={{ borderLeft: '3px solid var(--teal)', paddingLeft: 10 }}>
+                              <small className="muted"><b>{day(it.performed_on)}</b> · {KIND[it.kind as Kind] ?? it.kind}{it.garage ? ` · ${it.garage}` : ''}{Number(it.cost) > 0 ? ` · ${money(Number(it.cost))}` : ''}</small>
+                              <div style={{ whiteSpace: 'pre-wrap' }}>{it.description}</div>
+                              {it.photos.length > 0 && <SignedPhotos photos={Object.fromEntries(it.photos.map((p, i) => [`p${i}`, p]))} labels={Object.fromEntries(it.photos.map((_, i) => [`p${i}`, `Ảnh ${i + 1}`]))} />}
+                            </div>
+                          ))}
+                        </div>
+                      </td></tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+            {!loaded && <Skeleton rows={3} />}
+            {loaded && eps.length === 0 && <Empty>Chưa có đợt bảo trì / sửa chữa nào khớp bộ lọc. Hãy đổi khoảng ngày hoặc bộ lọc. Mỗi lần xe vào/ra trạng thái Bảo dưỡng hoặc Sửa chữa tai nạn sẽ tự thành một đợt.</Empty>}
+          </div>
+        )}
+        <Pager page={page} size={PAGE} total={view === 'episodes' ? eps.length : 0} onPage={setPage} unit="đợt" />
+
+        {view === 'log' && <>
         <div className="scroll">
           <table>
             <thead><tr><th>Thời gian ghi</th><th>Xe</th><th>Loại</th><th>Nội dung</th><th className="num">ODO</th><th>Nơi thực hiện</th><th className="num">Chi phí</th><th>Người ghi</th><th></th></tr></thead>
@@ -162,6 +239,7 @@ export default function Maintenance({ lk }: { lk: Lookups }) {
           {loaded && list.length === 0 && <Empty>Chưa có dòng nhật ký nào trong khoảng ngày và bộ lọc này. Hãy đổi khoảng ngày, hoặc bấm “+ Ghi nhật ký bảo trì” để thêm. Từ nay mỗi lần xe vào/ra trạng thái Bảo dưỡng hoặc Sửa chữa sẽ tự được ghi.</Empty>}
         </div>
         <Pager page={page} size={PAGE} total={list.length} onPage={setPage} unit="dòng" />
+        </>}
       </div>
     </div>
   );

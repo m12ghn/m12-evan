@@ -3,6 +3,12 @@
     "date": "2026-11-16",
     "items": [
       {
+        "type": "change",
+        "scope": "manager",
+        "title": "Bảo trì: xem theo đợt (Xe – BTBD/Tai nạn – Ngày bắt đầu – Ngày kết thúc)",
+        "detail": "Tab Bảo trì mặc định hiện từng đợt: xe vào Bảo dưỡng (BTBD) hoặc Đang sửa chữa tai nạn (Tai nạn) lúc nào, ra lúc nào; chưa có ngày kết thúc nghĩa là xe chưa xử lý xong (⏳, luôn hiện kể cả ngoài khoảng ngày). Có số ngày, chi phí và các lần ghi chi tiết gắn vào đợt, lọc theo Nội dung / Tình trạng / Loại xe / Biển số, tải Excel theo đợt. Nút 🧾 Nhật ký chi tiết vẫn xem từng dòng ghi."
+      },
+      {
         "type": "new",
         "scope": "manager",
         "title": "Tab 🔧 Bảo trì: nhật ký bảo trì / bảo dưỡng / sửa chữa xe",
