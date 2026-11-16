@@ -9,5 +9,11 @@
     "api/*.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/sync-btbd",
+      "schedule": "0 23 * * *"
+    }
+  ]
 }

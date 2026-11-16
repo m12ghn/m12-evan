@@ -5,6 +5,12 @@
       {
         "type": "new",
         "scope": "manager",
+        "title": "BTBD: tự đồng bộ mốc bảo dưỡng từ Google Sheet mỗi sáng 06:00",
+        "detail": "Máy chủ tự đọc sheet Data BTBD (địa chỉ CSV trong biến BTBD_SHEET_URL) bằng Vercel Cron mỗi ngày 06:00 và cập nhật Km BD kỳ tới của từng xe, không cần tải file Excel. Cài đặt có nút 🔄 Đồng bộ ngay và hiện lần cập nhật gần nhất; vẫn có thể chọn file Excel thủ công."
+      },
+      {
+        "type": "new",
+        "scope": "manager",
         "title": "Cảnh báo bảo dưỡng định kỳ (BTBD): nhập mốc từ sheet Data BTBD",
         "detail": "Cài đặt → 'Cập nhật mốc bảo dưỡng định kỳ (BTBD) từ Excel': chọn file Excel của sheet Data BTBD, app khớp theo biển số (bỏ dấu - và khoảng trắng) và lưu Km BD định kì tiếp theo. Cảnh báo tính theo ODO hiện tại của xe trong app: Quá hạn (≤ 0 km), Đến kỳ (≤ 300 km), Sắp đến kỳ (≤ 1.000 km). Hiện ở Đội xe (điểm cần lưu ý + trên từng xe) và tab Bảo trì (bảng 🔧 Cảnh báo BTBD)."
       },

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { readXlsxSheet } from '../../lib/excel';
+import { syncBtbd } from '../../lib/btbdApi';
 import { normPlate, parseKm, SERVICE_LABEL, serviceLeft, serviceState } from '../../lib/service';
 import type { Lookups } from '../../lib/useLookups';
 
@@ -16,6 +17,8 @@ export default function BulkService({ lk }: { lk: Lookups }) {
   const [file, setFile] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const lastSync = lk.vehicles.map(v => v.service_synced_at).filter(Boolean).sort().pop();
 
   async function onFile(f: File) {
     setMsg(''); setError(''); setChanges([]); setUnmatched([]); setInfo(''); setFile(f.name);
@@ -44,6 +47,16 @@ export default function BulkService({ lk }: { lk: Lookups }) {
     setInfo(`Sheet "${res.sheet}": ${res.rows.length} dòng. Khớp với app: ${ch.length} xe · không có trong app: ${miss.length} biển số (bỏ qua).`);
   }
 
+  // Đồng bộ tự động từ Google Sheet (cùng việc mà Vercel Cron làm mỗi sáng 06:00)
+  async function syncNow() {
+    setSyncing(true); setError(''); setMsg('');
+    try {
+      const r = await syncBtbd();
+      setMsg(`✓ Đồng bộ xong: ${r.matched} xe khớp, ${r.changed} xe đổi mốc, ${r.unmatched} biển số trong sheet chưa có trong app.`); lk.reload();
+    } catch (e) { setError((e as Error).message); }
+    setSyncing(false);
+  }
+
   async function commit() {
     setBusy(true); setError(''); setMsg('');
     const now = new Date().toISOString(); const errs: string[] = [];
@@ -60,9 +73,11 @@ export default function BulkService({ lk }: { lk: Lookups }) {
   return (
     <div className="card stack">
       <h3>Cập nhật mốc bảo dưỡng định kỳ (BTBD) từ Excel</h3>
-      <p className="muted" style={{ margin: 0 }}>Tải sheet <b>Data BTBD</b> về .xlsx rồi chọn file. App lấy cột <b>Km BD định kì tiếp theo</b> (cột N) và cảnh báo xe sắp tới hạn theo ODO hiện tại của xe trong app.</p>
+      <p className="muted" style={{ margin: 0 }}>App lấy cột <b>Km BD định kì tiếp theo</b> của sheet <b>Data BTBD</b> và cảnh báo xe sắp tới hạn theo ODO hiện tại của xe. <b>Tự động:</b> máy chủ đọc Google Sheet mỗi sáng 06:00 (cần cấu hình <code>BTBD_SHEET_URL</code> trên Vercel). <b>Thủ công:</b> bấm Đồng bộ ngay hoặc chọn file Excel.</p>
+      <p className="muted" style={{ margin: 0 }}>Lần cập nhật gần nhất: <b>{lastSync ? new Date(lastSync).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : 'chưa có'}</b></p>
       <div className="row" style={{ flexWrap: 'wrap' }}>
-        <label className="btn" style={{ cursor: 'pointer' }}>⬆️ Chọn file Excel
+        <button className="btn" disabled={syncing} onClick={syncNow}>{syncing ? 'Đang đồng bộ…' : '🔄 Đồng bộ ngay từ Google Sheet'}</button>
+        <label className="btn ghost" style={{ cursor: 'pointer' }}>⬆️ Hoặc chọn file Excel
           <input type="file" accept=".xlsx,.xls" hidden onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
         </label>
         {file && <span className="muted">{file}</span>}
