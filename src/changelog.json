@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-11-16",
+    "items": [
+      {
+        "type": "new",
+        "scope": "manager",
+        "title": "Tab 🔧 Bảo trì: nhật ký bảo trì / bảo dưỡng / sửa chữa xe",
+        "detail": "Xem lịch sử theo khoảng ngày + lọc Loại, Loại xe, Năng lượng, Biển số; phân trang, tải Excel, tổng chi phí, xe đang bảo dưỡng/sửa chữa. Nút + Ghi nhật ký bảo trì: chọn xe, loại (bảo dưỡng định kỳ, sửa chữa, sửa chữa tai nạn, kiểm định, khác), ngày thực hiện, ODO, nơi thực hiện, chi phí, nội dung, ảnh, và tùy chọn đổi luôn trạng thái xe."
+      },
+      {
+        "type": "system",
+        "scope": "all",
+        "title": "Cơ sở dữ liệu: migration 019 (vehicle_maintenance)",
+        "detail": "Trước đây chỉ lưu trạng thái hiện tại của xe. Nay có bảng nhật ký riêng, không sửa/xóa được; tự ghi mỗi lần xe vào/ra trạng thái Bảo dưỡng / Sửa chữa (kể cả tài xế báo hư hỏng cuối ca, quản lý đóng ca) và nhập lại các lần đổi trạng thái đã có trong Nhật ký thao tác."
+      }
+    ]
+  },
+  {
     "date": "2026-11-04",
     "items": [
       {

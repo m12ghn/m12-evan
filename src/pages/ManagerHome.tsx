@@ -8,15 +8,16 @@ import Trips from './manager/Trips';
 import Fuel from './manager/Fuel';
 import Settings from './manager/Settings';
 import Accidents from './manager/Accidents';
+import Maintenance from './manager/Maintenance';
 import AuditLog from './manager/AuditLog';
 import Changelog from './manager/Changelog';
 
-type Tab = 'fleet' | 'trips' | 'fuel' | 'accidents' | 'audit' | 'changelog' | 'settings';
+type Tab = 'fleet' | 'trips' | 'fuel' | 'accidents' | 'maintenance' | 'audit' | 'changelog' | 'settings';
 
 export default function ManagerHome() {
   const lk = useLookups();
   const isDev = useAuth().profile?.role === 'dev';
-  const TABS: Tab[] = ['fleet', 'trips', 'fuel', 'accidents', 'audit', 'changelog', 'settings'];
+  const TABS: Tab[] = ['fleet', 'trips', 'fuel', 'accidents', 'maintenance', 'audit', 'changelog', 'settings'];
   const fromHash = (): Tab => { const h = window.location.hash.replace('#', '') as Tab; return TABS.includes(h) ? h : 'fleet'; };
   const [tab, setTabState] = useState<Tab>(fromHash());   // tab nằm trên đường dẫn (#fleet…) để tải lại trang vẫn ở đúng tab
   const setTab = (t: Tab) => { setTabState(t); window.history.replaceState(null, '', `#${t}`); };
@@ -31,7 +32,7 @@ export default function ManagerHome() {
   }, []);
   useEffect(() => { loadPending(); }, [loadPending]);
 
-  const tabs: [Tab, string][] = [['fleet', '🚚 Đội xe'], ['trips', '📋 Nhật ký ca'], ['fuel', '⛽ Duyệt nhiên liệu/điện'], ['accidents', '🚨 Tai nạn'], ['audit', '🧾 Nhật ký'], ...(isDev ? [['changelog', '📝 Cập nhật'] as [Tab, string]] : []), ['settings', '⚙️ Cài đặt']];
+  const tabs: [Tab, string][] = [['fleet', '🚚 Đội xe'], ['trips', '📋 Nhật ký ca'], ['fuel', '⛽ Duyệt nhiên liệu/điện'], ['accidents', '🚨 Tai nạn'], ['maintenance', '🔧 Bảo trì'], ['audit', '🧾 Nhật ký'], ...(isDev ? [['changelog', '📝 Cập nhật'] as [Tab, string]] : []), ['settings', '⚙️ Cài đặt']];
   return (
     <Shell title={isDev ? 'Dev' : 'Quản lý'}>
       <nav className="tabs">
@@ -46,6 +47,7 @@ export default function ManagerHome() {
       {tab === 'trips' && <Trips lk={lk} />}
       {tab === 'fuel' && <Fuel lk={lk} onChanged={loadPending} />}
       {tab === 'accidents' && <Accidents lk={lk} onChanged={loadPending} />}
+      {tab === 'maintenance' && <Maintenance lk={lk} />}
       {tab === 'audit' && <AuditLog lk={lk} />}
       {tab === 'changelog' && isDev && <Changelog />}
       {tab === 'settings' && <Settings lk={lk} isDev={isDev} />}
